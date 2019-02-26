@@ -5,7 +5,7 @@ It also contains a wrapper class for the entire GUI itself.
 """
 from tkinter import Tk
 
-from gui_frames import MainFrame, FileListFrame, ButtonsFrame
+from gui_frames import MainFrame, FileListFrame, ButtonsFrame, ScrollListFrame
 from gui_buttons import UpButton, DownButton, CloseButton
 from gui_scroll_list_labels import DirectoryLabel
 
@@ -33,6 +33,7 @@ class FileExplorerGUI:
         self.down_button = DownButton(self.buttons_frame.widget)
         self.close_button = CloseButton(self.root, self.buttons_frame.widget)
         self.dir_label = DirectoryLabel(self.flist_frame.widget)
+        self.scroll_list_frame = ScrollListFrame(self.flist_frame.widget)
 
 if __name__ == "__main__":
     ROOT = Tk()
