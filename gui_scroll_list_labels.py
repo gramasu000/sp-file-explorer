@@ -3,7 +3,7 @@
 This module defines wrapper classes for each Label/ListBox/Scrollbar widget in our file explorer.
 Each wrapper class has the visual attributes of the widget as properties.
 """
-from tkinter import Label, Listbox, Scrollbar, TOP, LEFT, RIGHT, BOTH, VERTICAL
+from tkinter import Label, Listbox, Scrollbar, TOP, LEFT, RIGHT, BOTH, VERTICAL, SINGLE
 
 class DirectoryLabel:
     """DirectoryLabel class
@@ -47,9 +47,10 @@ class FileScrollListBox:
 
     def _init_listbox_settings(self):
         self.l_background = "white"
-        self.l_width = 770
-        self.l_height = 530
+        self.l_width = 96
+        self.l_height = 33
         self.l_activestyle = "dotbox"
+        self.l_selectmode = SINGLE
         self.l_pack_side = LEFT
         self.l_pack_fill = BOTH
         
@@ -63,7 +64,8 @@ class FileScrollListBox:
             background=self.l_background,
             width=self.l_width,
             height=self.l_height,
-            activestyle=self.l_activestyle
+            activestyle=self.l_activestyle,
+            selectmode=self.l_selectmode
         )
         self.listbox.pack(
             side=self.l_pack_side,
