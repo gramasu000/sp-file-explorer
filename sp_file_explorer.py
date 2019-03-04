@@ -9,10 +9,15 @@ from os.path import dirname, isdir
 
 from widget_data import MAIN_FRAME_DATA, FILELIST_FRAME_DATA, BUTTONS_FRAME_DATA,\
     SCROLL_LIST_FRAME_DATA, UP_BUTTON_DATA, DOWN_BUTTON_DATA, CLOSE_BUTTON_DATA,\
-    DIRECTORY_LABEL_DATA, FILE_LISTBOX_DATA, FILE_SCROLLBAR_DATA   
+    DIRECTORY_LABEL_DATA, FILE_LISTBOX_DATA, FILE_SCROLLBAR_DATA
 
 
 def make_widget(data, parent):
+    """make_widget function
+
+    This function will make and return a Tk widget
+        based on the dictionary data and widget parent.
+    """
     widget = data["widget_type"](parent)
     widget.configure(**data["attrs"])
     widget.pack(**data["pack_attrs"])
@@ -31,7 +36,7 @@ class FileExplorerGUI:
             "{}x{}".format(self.width, self.height)
         )
         self.root.wm_title("Simple Python File Explorer")
-    
+
     def _init_widgets(self):
         self.main_frame = make_widget(MAIN_FRAME_DATA, parent=self.root)
         self.flist_frame = make_widget(FILELIST_FRAME_DATA, parent=self.main_frame)
@@ -53,7 +58,7 @@ class FileExplorerGUI:
         self.flist = listdir(arg_dir)
         flist_stringvar = StringVar(self.scroll_list_frame, listdir(arg_dir))
         self.f_listbox.configure(listvariable=flist_stringvar)
-        if len(self.flist) != 0:
+        if len(self.flist) is not 0:
             self.f_listbox.selection_clear(0, len(self.flist) - 1)
             self.f_listbox.selection_set(0)
 
