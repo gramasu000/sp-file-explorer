@@ -1,2 +1,2 @@
 # sp-file-explorer
-A bare-bones file explorer written in python (nothing but built-in modules)
+A simple python file explorer (nothing but built-in modules - tkinter, os)
