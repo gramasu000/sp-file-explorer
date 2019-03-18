@@ -10,9 +10,7 @@ from tkinter import Button, Frame, Label, Listbox, Scrollbar,\
 MAIN_FRAME_DATA = {
     "widget_type": Frame,
     "attrs": {
-        "width": 800,
-        "height": 600,
-        "background": "green"
+        "background": "grey"
     },
     "pack_attrs": {
         "side": TOP,
@@ -23,8 +21,6 @@ MAIN_FRAME_DATA = {
 FILELIST_FRAME_DATA = {
     "widget_type": Frame,
     "attrs": {
-        "width": 790,
-        "height": 550,
         "background": "white",
         "borderwidth": 3,
         "relief": "ridge"
@@ -32,8 +28,8 @@ FILELIST_FRAME_DATA = {
     "pack_attrs": {
         "side": TOP,
         "fill": BOTH,
-        "padx": 5,
-        "pady": 5
+        #"padx": 5,
+        #"pady": 5
     }
 
 }
@@ -41,30 +37,24 @@ FILELIST_FRAME_DATA = {
 BUTTONS_FRAME_DATA = {
     "widget_type": Frame,
     "attrs": {
-        "width": 790,
-        "height": 35,
-        "background": "orange"
+        "background": "grey"
     },
     "pack_attrs": {
         "side": TOP,
         "fill": BOTH,
-        "padx": 5,
-        "pady": 5
+        #"padx": 5,
+        #"pady": 5
     }
 }
 
 SCROLL_LIST_FRAME_DATA = {
     "widget_type": Frame,
     "attrs": {
-        "width": 790,
-        "height": 530,
-        "background": "blue"
+        "background": "grey"
     },
     "pack_attrs": {
         "side": BOTTOM,
         "fill": BOTH,
-        "padx": 0,
-        "pady": 0
     }
 }
 
@@ -74,8 +64,6 @@ UP_BUTTON_DATA = {
         "text": "Move Up",
         "width": 9,
         "height": 1,
-        "padx": 4,
-        "pady": 4
     },
     "pack_attrs": {
         "side": LEFT,
@@ -89,8 +77,6 @@ DOWN_BUTTON_DATA = {
         "text": "Move Down",
         "width": 9,
         "height": 1,
-        "padx": 4,
-        "pady": 4
     },
     "pack_attrs": {
         "side": LEFT,
@@ -104,8 +90,6 @@ CLOSE_BUTTON_DATA = {
         "text": "Close",
         "width": 9,
         "height": 1,
-        "padx": 4,
-        "pady": 4
     },
     "pack_attrs": {
         "side": RIGHT,
@@ -118,9 +102,7 @@ DIRECTORY_LABEL_DATA = {
     "attrs": {
         "width": 90,
         "height": 1,
-        "background": "yellow",
-        "padx": 0,
-        "pady": 0
+        "background": "white",
     },
     "pack_attrs": {
         "side": TOP,
