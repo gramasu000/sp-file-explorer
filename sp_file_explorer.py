@@ -12,16 +12,49 @@ from widget_data import MAIN_FRAME_DATA, FILELIST_FRAME_DATA, BUTTONS_FRAME_DATA
     DIRECTORY_LABEL_DATA, FILE_LISTBOX_DATA, FILE_SCROLLBAR_DATA
 
 
-def make_widget(data, parent):
-    """make_widget function
+def make_tk_widget(data, parent):
+    """Creates a tkinter.Widget object with given visual/packing data and parent object
 
-    This function will make and return a Tk widget
-        based on the dictionary data and widget parent.
+    This function instantiates, configures and returns a tkinter gui object
+    (i.e. tkinter.Frame, tkinter.Button, tkinter.Listbox)
+    aacording to the details in the data argument.
+
+    Args:
+        data (dict): A dictionary with "widget_type", "attrs", and "pack_attrs"
+                    keys defined.
+        parent: A tkinter.Widget object which is the parent of the widget returned   
+
+    Returns:
+        tkinter.Widget: A widget in a tkinter application
+
+    Example:
+        The following code
+    
+            widget = tkinter.Frame(parent)
+            widget.configure(background="white")
+            widget.pack(side=tkinter.TOP)
+       
+        is equivalent to  
+    
+            data = { "widget_type": tkinter.Frame, 
+                "attrs": { 
+                   "background": "white"     
+                },
+                "pack_attrs": {
+                    "side": tkinter.TOP             
+                }
+            }
+            widget = make_tk_widget(data, parent)
+
+        Although it seems that the first code block is shorter,
+            the second code block allows us to abstract away
+            the visual/packing properties of the widget
+            from the instantiation.  
     """
-    widget = data["widget_type"](parent)
-    widget.configure(**data["attrs"])
-    widget.pack(**data["pack_attrs"])
-    return widget
+    tk_widget = data["widget_type"](parent)
+    tk_widget.configure(**data["attrs"])
+    tk_widget.pack(**data["pack_attrs"])
+    return tk_widget
 
 class FileExplorerGUI:
     """FileExplorerGUI class
@@ -32,17 +65,17 @@ class FileExplorerGUI:
     def _init_window_manager_settings(self):
         self.root.wm_title("Simple Python File Explorer")
 
-    def _init_widgets(self):
-        self.main_frame = make_widget(MAIN_FRAME_DATA, parent=self.root)
-        self.flist_frame = make_widget(FILELIST_FRAME_DATA, parent=self.main_frame)
-        self.buttons_frame = make_widget(BUTTONS_FRAME_DATA, parent=self.main_frame)
-        self.up_button = make_widget(UP_BUTTON_DATA, parent=self.buttons_frame)
-        self.down_button = make_widget(DOWN_BUTTON_DATA, parent=self.buttons_frame)
-        self.close_button = make_widget(CLOSE_BUTTON_DATA, parent=self.buttons_frame)
-        self.dir_label = make_widget(DIRECTORY_LABEL_DATA, parent=self.flist_frame)
-        self.scroll_list_frame = make_widget(SCROLL_LIST_FRAME_DATA, parent=self.flist_frame)
-        self.f_listbox = make_widget(FILE_LISTBOX_DATA, parent=self.scroll_list_frame)
-        self.f_scrollbar = make_widget(FILE_SCROLLBAR_DATA, parent=self.scroll_list_frame)
+    def _init_tk_widgets(self):
+        self.main_frame = make_tk_widget(MAIN_FRAME_DATA, parent=self.root)
+        self.flist_frame = make_tk_widget(FILELIST_FRAME_DATA, parent=self.main_frame)
+        self.buttons_frame = make_tk_widget(BUTTONS_FRAME_DATA, parent=self.main_frame)
+        self.up_button = make_tk_widget(UP_BUTTON_DATA, parent=self.buttons_frame)
+        self.down_button = make_tk_widget(DOWN_BUTTON_DATA, parent=self.buttons_frame)
+        self.close_button = make_tk_widget(CLOSE_BUTTON_DATA, parent=self.buttons_frame)
+        self.dir_label = make_tk_widget(DIRECTORY_LABEL_DATA, parent=self.flist_frame)
+        self.scroll_list_frame = make_tk_widget(SCROLL_LIST_FRAME_DATA, parent=self.flist_frame)
+        self.f_listbox = make_tk_widget(FILE_LISTBOX_DATA, parent=self.scroll_list_frame)
+        self.f_scrollbar = make_tk_widget(FILE_SCROLLBAR_DATA, parent=self.scroll_list_frame)
         self.f_listbox.configure(yscrollcommand=self.f_scrollbar.set)
         self.f_scrollbar["command"] = self.f_listbox.yview
 
@@ -81,7 +114,7 @@ class FileExplorerGUI:
     def __init__(self, root):
         self.root = root
         self._init_window_manager_settings()
-        self._init_widgets()
+        self._init_tk_widgets()
         self._update_dir_info(getcwd())
         self._set_button_callbacks()
 
