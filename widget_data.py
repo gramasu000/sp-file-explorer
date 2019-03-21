@@ -28,8 +28,6 @@ FILELIST_FRAME_DATA = {
     "pack_attrs": {
         "side": TOP,
         "fill": BOTH,
-        #"padx": 5,
-        #"pady": 5
     }
 
 }
@@ -42,8 +40,6 @@ BUTTONS_FRAME_DATA = {
     "pack_attrs": {
         "side": TOP,
         "fill": BOTH,
-        #"padx": 5,
-        #"pady": 5
     }
 }
 

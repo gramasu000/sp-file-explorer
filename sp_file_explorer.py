@@ -3,7 +3,7 @@
 This module defines wrapper classes for each widget in our file explorer
 It also contains a wrapper class for the entire GUI itself.
 """
-from tkinter import Tk, StringVar
+from tkinter import Tk, StringVar, MOVETO
 from os import getcwd, listdir, sep
 from os.path import dirname, isdir
 
@@ -29,12 +29,7 @@ class FileExplorerGUI:
     This class is a wrapper to the whole GUI and all its components.
     """
 
-    def _init_visual_settings(self):
-        self.width = 800
-        self.height = 600
-        self.root.geometry(
-            "{}x{}".format(self.width, self.height)
-        )
+    def _init_window_manager_settings(self):
         self.root.wm_title("Simple Python File Explorer")
 
     def _init_widgets(self):
@@ -58,6 +53,7 @@ class FileExplorerGUI:
         self.flist = listdir(arg_dir)
         flist_stringvar = StringVar(self.scroll_list_frame, listdir(arg_dir))
         self.f_listbox.configure(listvariable=flist_stringvar)
+        self.f_listbox.yview_moveto(0)
         if len(self.flist) is not 0:
             self.f_listbox.selection_clear(0, len(self.flist) - 1)
             self.f_listbox.selection_set(0)
@@ -84,7 +80,7 @@ class FileExplorerGUI:
 
     def __init__(self, root):
         self.root = root
-        self._init_visual_settings()
+        self._init_window_manager_settings()
         self._init_widgets()
         self._update_dir_info(getcwd())
         self._set_button_callbacks()
