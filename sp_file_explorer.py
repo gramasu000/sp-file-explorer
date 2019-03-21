@@ -1,8 +1,9 @@
-"""Module: sp_file_explorer
+"""Main module for the simple python file explorer
 
-This module defines wrapper classes for each widget in our file explorer
-It also contains a wrapper class for the entire GUI itself.
+This module defines the FileExplorer GUI class, whose instance contains 
+a basic file explorer application using tkinter.
 """
+
 from tkinter import Tk, StringVar, MOVETO
 from os import getcwd, listdir, sep
 from os.path import dirname, isdir
@@ -57,15 +58,26 @@ def make_tk_widget(data, parent):
     return tk_widget
 
 class FileExplorerGUI:
-    """FileExplorerGUI class
+    """A class whose instance contains a basic file explorer application using tkinter
 
-    This class is a wrapper to the whole GUI and all its components.
+    This class contains all the widgets and event handlers needed for sp_file_explorer.
+    The main widgets of this app are the three buttons, the scrollable listbox and the text label.
+    The main event handlers are triggered by the buttons and change the scrollable listbox.
     """
 
     def _init_window_manager_settings(self):
+        """Sets any root-level configuration of tkinter gui
+
+        Specifically, we set the title of the gui window
+        """
         self.root.wm_title("Simple Python File Explorer")
 
     def _init_tk_widgets(self):
+        """Initialize the widgets of the sp_file_explorer
+
+        We initialize all frames, buttons, label, listbox and scrollbar in the 
+        application, and then link the listbox and the scrollbar.
+        """
         self.main_frame = make_tk_widget(MAIN_FRAME_DATA, parent=self.root)
         self.flist_frame = make_tk_widget(FILELIST_FRAME_DATA, parent=self.main_frame)
         self.buttons_frame = make_tk_widget(BUTTONS_FRAME_DATA, parent=self.main_frame)
@@ -80,6 +92,16 @@ class FileExplorerGUI:
         self.f_scrollbar["command"] = self.f_listbox.yview
 
     def _update_dir_info(self, arg_dir):
+        """Update the text label and listbox contents according to arg_dir
+
+        The text label shows the path to the current directory,
+        while the listbox shows all the children of that directory.
+        This function changes the contents of both widgets 
+        to correspond to a new current directory.
+
+        Args:
+            arg_dir (str): The filepath of the new current directory 
+        """
         self.curdir = arg_dir
         self.dir_label.configure(text=self.curdir)
         self.pardir = dirname(arg_dir)
@@ -91,10 +113,25 @@ class FileExplorerGUI:
             self.f_listbox.selection_clear(0, len(self.flist) - 1)
             self.f_listbox.selection_set(0)
 
-    def _up_callback(self):
+    def up_callback(self):
+        """Event Handler for click of 'Move Up' button
+
+        The text label shows the path to the current directory,
+        while the listbox shows all the children of that directory.
+        This method sets the new current directory to the parent directory
+        and updates the text label and listbox accordingly. 
+        """
         self._update_dir_info(self.pardir)
 
-    def _down_callback(self):
+    def down_callback(self):
+        """Event Handler for click of 'Move Down' button
+
+        The text label shows the path to the current directory,
+        while the listbox shows all the children of that directory.
+        This method sets the new current directory to a child directory 
+        (if a child exists and is a directory) and updates the text label 
+        and listbox accordingly.  
+        """
         if len(self.f_listbox.curselection()) is not 0:
             index = self.f_listbox.curselection()[0]
             file_name = self.flist[index]
@@ -102,16 +139,33 @@ class FileExplorerGUI:
             if isdir(file_path):
                 self._update_dir_info(file_path)
 
-    def _close_callback(self):
+    def close_callback(self):
+        """Event Handler for click of 'Close' button
+
+        This method destroys all of the widgets in the application
+        """
         self.root.destroy()
 
     def _set_button_callbacks(self):
-        self.up_button.configure(command=self._up_callback)
-        self.down_button.configure(command=self._down_callback)
-        self.close_button.configure(command=self._close_callback)
+        """Sets event handlers for the three buttons"""
+        self.up_button.configure(command=self.up_callback)
+        self.down_button.configure(command=self.down_callback)
+        self.close_button.configure(command=self.close_callback)
 
 
     def __init__(self, root):
+        """Initializes the sp_file_explorer
+
+        Sets the root, window manager settings.
+        Initializes the widgets.
+        Sets the button callbacks.
+        Sets default contents of text label and listbox 
+        (current directory filepath and children respectively)
+
+        Args:
+            root (tkinter.Tk) - A Tk gui object which is the 
+                                root for the tkinter app.   
+        """
         self.root = root
         self._init_window_manager_settings()
         self._init_tk_widgets()
