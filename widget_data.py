@@ -1,7 +1,9 @@
-"""Module: widget_data
+"""Module containing visual information of widgets
 
-This module contains dictionaries of the visual information
-    of every widget used in sp_file_explorer
+This module contains python dictionaries containing
+the visual and packing information for each widget in the app.
+These dictionaries will be passed as argument
+to the make_tk_widget function in the sp_file_explorer module 
 """
 from tkinter import Button, Frame, Label, Listbox, Scrollbar,\
     TOP, BOTTOM, LEFT, RIGHT, X, BOTH, SINGLE, VERTICAL
