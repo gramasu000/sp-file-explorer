@@ -171,8 +171,3 @@ class FileExplorerGUI:
         self._init_tk_widgets()
         self._update_dir_info(getcwd())
         self._set_button_callbacks()
-
-if __name__ == "__main__":
-    ROOT = Tk()
-    GUI = FileExplorerGUI(ROOT)
-    ROOT.mainloop()
