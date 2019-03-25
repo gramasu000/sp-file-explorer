@@ -8,7 +8,7 @@ from tkinter import Tk, StringVar, MOVETO
 from os import getcwd, listdir, sep
 from os.path import dirname, isdir
 
-from widget_data import MAIN_FRAME_DATA, FILELIST_FRAME_DATA, BUTTONS_FRAME_DATA,\
+from .widget_data import MAIN_FRAME_DATA, FILELIST_FRAME_DATA, BUTTONS_FRAME_DATA,\
     SCROLL_LIST_FRAME_DATA, UP_BUTTON_DATA, DOWN_BUTTON_DATA, CLOSE_BUTTON_DATA,\
     DIRECTORY_LABEL_DATA, FILE_LISTBOX_DATA, FILE_SCROLLBAR_DATA
 
