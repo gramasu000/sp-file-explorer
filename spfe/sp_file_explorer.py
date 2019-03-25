@@ -7,6 +7,7 @@ a basic file explorer application using tkinter.
 from tkinter import Tk, StringVar, MOVETO
 from os import getcwd, listdir, sep
 from os.path import dirname, isdir
+import logging
 
 from .widget_data import MAIN_FRAME_DATA, FILELIST_FRAME_DATA, BUTTONS_FRAME_DATA,\
     SCROLL_LIST_FRAME_DATA, UP_BUTTON_DATA, DOWN_BUTTON_DATA, CLOSE_BUTTON_DATA,\
@@ -90,6 +91,7 @@ class FileExplorerGUI:
         self.f_scrollbar = make_tk_widget(FILE_SCROLLBAR_DATA, parent=self.scroll_list_frame)
         self.f_listbox.configure(yscrollcommand=self.f_scrollbar.set)
         self.f_scrollbar["command"] = self.f_listbox.yview
+        self.logger.info("graphical widgets initialized")
 
     def _update_dir_info(self, arg_dir):
         """Update the text label and listbox contents according to arg_dir
@@ -103,13 +105,19 @@ class FileExplorerGUI:
             arg_dir (str): The filepath of the new current directory 
         """
         self.curdir = arg_dir
+        self.logger.info(f"set current directory to {self.curdir}")
         self.dir_label.configure(text=self.curdir)
         self.pardir = dirname(arg_dir)
         self.flist = listdir(arg_dir)
         flist_stringvar = StringVar(self.scroll_list_frame, listdir(arg_dir))
         self.f_listbox.configure(listvariable=flist_stringvar)
         self.f_listbox.yview_moveto(0)
-        if len(self.flist) is not 0:
+        num_children = len(self.flist)
+        if num_children is not 1:
+            self.logger.info(f"current directory has {num_children} children files")
+        else:
+            self.logger.info(f"current directory has {num_children} child file") 
+        if num_children is not 0:
             self.f_listbox.selection_clear(0, len(self.flist) - 1)
             self.f_listbox.selection_set(0)
 
@@ -121,6 +129,7 @@ class FileExplorerGUI:
         This method sets the new current directory to the parent directory
         and updates the text label and listbox accordingly. 
         """
+        self.logger.info("'Move Up' button clicked")
         self._update_dir_info(self.pardir)
 
     def down_callback(self):
@@ -132,19 +141,26 @@ class FileExplorerGUI:
         (if a child exists and is a directory) and updates the text label 
         and listbox accordingly.  
         """
+        self.logger.info("'Move Down' button clicked")
         if len(self.f_listbox.curselection()) is not 0:
             index = self.f_listbox.curselection()[0]
             file_name = self.flist[index]
             file_path = self.curdir + sep + file_name
             if isdir(file_path):
                 self._update_dir_info(file_path)
+            else:
+                self.logger.warn("'Move Down' callback invalid, child file is not a directory")
+        else:
+            self.logger.warn("'Move Down' callback invalid, no child file was selected")
 
     def close_callback(self):
         """Event Handler for click of 'Close' button
 
         This method destroys all of the widgets in the application
         """
+        self.logger.info("'Close' button clicked")
         self.root.destroy()
+        self.logger.info("destroying application")
 
     def _set_button_callbacks(self):
         """Sets event handlers for the three buttons"""
@@ -167,6 +183,10 @@ class FileExplorerGUI:
                                 root for the tkinter app.   
         """
         self.root = root
+        logging.basicConfig(format="%(asctime)s-%(levelname)s: %(message)s", 
+                            level=logging.INFO, handlers=[logging.FileHandler("sp_file_explorer.log"), logging.StreamHandler()])
+        self.logger = logging.getLogger()
+        self.logger.info("initializing application")
         self._init_window_manager_settings()
         self._init_tk_widgets()
         self._update_dir_info(getcwd())
