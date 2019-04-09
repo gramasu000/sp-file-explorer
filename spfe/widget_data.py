@@ -9,14 +9,59 @@ from tkinter import Button, Frame, Label, Listbox, Scrollbar,\
     TOP, BOTTOM, LEFT, RIGHT, X, BOTH, SINGLE, VERTICAL
 
 
+def make_tk_widget(data, parent):
+    """Creates a tkinter.Widget object with given visual/packing data and parent object
+
+    This function instantiates, configures and returns a tkinter gui object
+    (i.e. tkinter.Frame, tkinter.Button, tkinter.Listbox)
+    aacording to the details in the data argument.
+
+    Args:
+        data (dict): A dictionary with "widget_type", "attrs", and "pack_attrs"
+                    keys defined.
+        parent: A tkinter.Widget object which is the parent of the widget returned   
+
+    Returns:
+        tkinter.Widget: A widget in a tkinter application
+
+    Example:
+        The following code
+    
+            widget = tkinter.Frame(parent)
+            widget.configure(background="white")
+            widget.pack(side=tkinter.TOP)
+       
+        is equivalent to  
+    
+            data = { "widget_type": tkinter.Frame, 
+                "attrs": { 
+                   "background": "white"     
+                },
+                "pack_attrs": {
+                    "side": tkinter.TOP             
+                }
+            }
+            widget = make_tk_widget(data, parent)
+
+        Although it seems that the first code block is shorter,
+            the second code block allows us to abstract away
+            the visual/packing properties of the widget
+            from the instantiation.  
+    """
+    tk_widget = data["widget_type"](parent)
+    tk_widget.configure(**data["attrs"])
+    tk_widget.pack(**data["pack_attrs"])
+    return tk_widget
+
+
 MAIN_FRAME_DATA = {
     "widget_type": Frame,
     "attrs": {
         "background": "grey"
     },
-    "pack_attrs": {
-        "side": TOP,
-        "fill": BOTH
+    "grid_attrs": {
+        "row": 0,
+        "column": 0
     }
 }
 
