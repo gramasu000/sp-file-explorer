@@ -1,5 +1,5 @@
 from os import listdir, sep, getcwd
-from os.path import getmtime, getsize, isdir, isfile, islink, dirname
+from os.path import getmtime, getsize, isdir, isfile, islink, dirname, join
 from time import localtime
 from tkinter import Tk, Label, Listbox, Scrollbar, N, S, E, W, VERTICAL, END, DISABLED, NORMAL
 
@@ -17,7 +17,7 @@ class Reducers:
     def moveDownDir(state):
         if len(state["selected"]) != 0:
             newState = {}
-            newState["dir"] = state["dir"] + sep + state["selected"][0]
+            newState["dir"] = join(state["dir"],  state["selected"][0])
             newState["children"] = listdir(newState["dir"])
             newState["selected"] = newState["children"][0:1]
             return newState
@@ -85,7 +85,7 @@ class Application:
         self.listbox.delete(0, END)        
         
         for child in self.state["children"]:
-            path = dir + sep + child
+            path = join(dir, child)
             if isfile(path):
                 self.listbox.insert(END, child)
                 self.listbox.itemconfig(END, background="yellow", selectbackground="orange")
