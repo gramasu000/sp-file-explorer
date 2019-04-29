@@ -37,6 +37,20 @@ class Reducers:
             newState["selected"] = newState["children"][index+1:index+2]
         return newState
 
+    @staticmethod
+    def moveUpSelection(state):
+        newState = {}
+        newState["dir"] = state["dir"]
+        newState["children"] = state["children"]
+        selected = state["selected"][0]
+        index = state["children"].index(selected)
+        if index == 0: 
+            newState["selected"] = newState["children"][0:1]
+        else:
+            newState["selected"] = newState["children"][index-1:index]
+        return newState
+        
+
 class Application:
     
     def initUI(self, root):
@@ -91,6 +105,7 @@ class Application:
         self.root.bind("z", lambda event: self.render(Reducers.moveDownDir(self.state)))
         self.root.bind("<<ListboxSelect>>", lambda event: self.render(self.state))
         self.root.bind("<Down>", lambda event: self.render(Reducers.moveDownSelection(self.state)))
+        self.root.bind("<Up>", lambda event: self.render(Reducers.moveUpSelection(self.state)))
 
     def __init__(self, root):
         state = {
