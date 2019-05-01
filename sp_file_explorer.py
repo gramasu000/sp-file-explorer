@@ -4,13 +4,18 @@ from time import localtime
 from tkinter import Tk, Label, Listbox, Scrollbar, N, S, E, W, VERTICAL, END, DISABLED, NORMAL
 
 class Reducers:
-    
+
+    list_size = 40
+    list_width = 100    
+    scroll_trigger = 3
+
     @staticmethod
     def moveUpDir(state):
         newState = {}
         newState["dir"] = dirname(state["dir"])
         newState["children"] = listdir(newState["dir"])
         newState["selected"] = newState["children"][0:1]
+        newState["scroll_top"] = 0
         return newState
 
     @staticmethod
@@ -20,34 +25,50 @@ class Reducers:
             newState["dir"] = join(state["dir"],  state["selected"][0])
             newState["children"] = listdir(newState["dir"])
             newState["selected"] = newState["children"][0:1]
+            newState["scroll_top"] = 0
             return newState
         else:
             return state
 
-    @staticmethod
-    def moveDownSelection(state):
+    @classmethod
+    def moveDownSelection(cls, state):
         newState = {}
         newState["dir"] = state["dir"]
         newState["children"] = state["children"]
+
         selected = state["selected"][0]
         index = state["children"].index(selected)
-        if index == len(state["children"]) - 1: 
-            newState["selected"] = newState["children"][index:index+1]
+        if index == len(state["children"]) - 1:
+            new_index = index 
         else:
-            newState["selected"] = newState["children"][index+1:index+2]
+            new_index = index + 1            
+        newState["selected"] = newState["children"][new_index:new_index+1]
+
+        newState["scroll_top"] = state["scroll_top"]
+        window_index = new_index - state["scroll_top"]
+        num_children = len(newState["children"])
+        if cls.list_size - window_index < cls.scroll_trigger and num_children - index >= cls.scroll_trigger:
+            newState["scroll_top"] += 1
         return newState
 
-    @staticmethod
-    def moveUpSelection(state):
+    @classmethod
+    def moveUpSelection(cls, state):
         newState = {}
         newState["dir"] = state["dir"]
         newState["children"] = state["children"]
+
         selected = state["selected"][0]
         index = state["children"].index(selected)
         if index == 0: 
-            newState["selected"] = newState["children"][0:1]
+            new_index = index
         else:
-            newState["selected"] = newState["children"][index-1:index]
+            new_index = index - 1
+        newState["selected"] = newState["children"][new_index:new_index+1]
+             
+        newState["scroll_top"] = state["scroll_top"]
+        window_index = new_index - state["scroll_top"]
+        if window_index < cls.scroll_trigger and new_index >= cls.scroll_trigger:
+            newState["scroll_top"] -= 1
         return newState
         
 
@@ -56,12 +77,11 @@ class Application:
     def initUI(self, root):
         self.root = root 
         self.root.wm_title("Simple Python File Explorer")
-        self.root.geometry("800x600")
         self.root.configure(takefocus=0)
         self.root.rowconfigure(1, weight=1)
         self.root.columnconfigure(0, weight=1)
 
-        self.listbox = Listbox(self.root, background="white", activestyle="dotbox")
+        self.listbox = Listbox(self.root, background="white", activestyle="dotbox", width=100, height=40)
         self.listbox.grid(row=1, column=0, sticky=N+S+E+W) 
         
         self.scrollbar = Scrollbar(self.root, orient=VERTICAL, takefocus=0)
@@ -71,7 +91,7 @@ class Application:
         self.label.grid(row=0, columnspan=2, sticky=W+E)
          
         self.listbox.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollbar["command"] = self.listbox.yview
+        #self.scrollbar["command"] = self.listbox.yview
 
     def render(self, state):
         # Save State
@@ -98,7 +118,11 @@ class Application:
         # Select specified children
         for child in self.state["selected"]:
             index = self.state["children"].index(child)
-            self.listbox.selection_set(index)  
+            self.listbox.selection_set(index)
+        
+        # Set scroll
+        fraction = self.state["scroll_top"] / (len(self.state["children"]) + 1)
+        self.listbox.yview_moveto(fraction) 
 
     def bindCallbacks(self):
         self.root.bind("a", lambda event: self.render(Reducers.moveUpDir(self.state)))
@@ -111,7 +135,8 @@ class Application:
         state = {
             "dir": getcwd(),
             "children": listdir(getcwd()),
-            "selected": listdir(getcwd())[0:1]  
+            "selected": listdir(getcwd())[0:1],
+            "scroll_top": 0  
         }
         self.initUI(root)
         self.render(state)
