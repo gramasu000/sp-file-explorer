@@ -90,7 +90,9 @@ class Reducers:
         newState["scroll_top"] = num_children - cls.list_size
         return newState
 
-        
+    @staticmethod
+    def quit(state):
+        return {}  
 
 class Application:
     
@@ -116,33 +118,36 @@ class Application:
     def render(self, state):
         # Save State
         self.state = state
+            
+        if (self.state == {}):
+            self.root.destroy() 
+        else:
+            # Reset Directory Label
+            dir = self.state["dir"]
+            self.label.configure(text=dir)
 
-        # Reset Directory Label
-        dir = self.state["dir"]
-        self.label.configure(text=dir)
-
-        # Reset Listbox of children files
-        self.listbox.delete(0, END)        
+            # Reset Listbox of children files
+            self.listbox.delete(0, END)        
         
-        for child in self.state["children"]:
-            path = join(dir, child)
-            if isfile(path):
-                self.listbox.insert(END, child)
-                self.listbox.itemconfig(END, background="yellow", selectbackground="orange")
-            elif isdir(path):
-                self.listbox.insert(END, child + "/") 
-            elif islink(path):
-                self.listbox.insert(END, child + "/ (L)")
-                self.listbox.itemconfig(END, background="green", selectbackground="purple")
+            for child in self.state["children"]:
+                path = join(dir, child)
+                if isfile(path):
+                    self.listbox.insert(END, child)
+                    self.listbox.itemconfig(END, background="yellow", selectbackground="orange")
+                elif isdir(path):
+                    self.listbox.insert(END, child + "/") 
+                elif islink(path):
+                    self.listbox.insert(END, child + "/ (L)")
+                    self.listbox.itemconfig(END, background="green", selectbackground="purple")
         
-        # Select specified children
-        for child in self.state["selected"]:
-            index = self.state["children"].index(child)
-            self.listbox.selection_set(index)
+            # Select specified children
+            for child in self.state["selected"]:
+                index = self.state["children"].index(child)
+                self.listbox.selection_set(index)
         
-        # Set scroll
-        fraction = self.state["scroll_top"] / (len(self.state["children"]) + 1)
-        self.listbox.yview_moveto(fraction) 
+            # Set scroll
+            fraction = self.state["scroll_top"] / (len(self.state["children"]) + 1)
+            self.listbox.yview_moveto(fraction) 
 
     def bindCallbacks(self):
         self.root.bind("-", lambda event: self.render(Reducers.moveUpDir(self.state)))
@@ -152,6 +157,7 @@ class Application:
         self.root.bind("<Up>", lambda event: self.render(Reducers.moveUpSelection(self.state)))
         self.root.bind("g", lambda event: self.render(Reducers.moveTopSelection(self.state)))
         self.root.bind("<Shift-KeyPress-G>", lambda event: self.render(Reducers.moveBottomSelection(self.state)))
+        self.root.bind("q", lambda event: self.render(Reducers.quit(self.state)))
 
     def __init__(self, root):
         state = {
