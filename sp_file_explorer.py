@@ -70,6 +70,26 @@ class Reducers:
         if window_index < cls.scroll_trigger and new_index >= cls.scroll_trigger:
             newState["scroll_top"] -= 1
         return newState
+
+    @staticmethod
+    def moveTopSelection(state):
+        newState = {}
+        newState["dir"] = state["dir"]
+        newState["children"] = state["children"]
+        newState["selected"] = state["children"][0:1]
+        newState["scroll_top"] = 0
+        return newState
+
+    @classmethod
+    def moveBottomSelection(cls, state):
+        newState = {}
+        newState["dir"] = state["dir"]
+        newState["children"] = state["children"]
+        num_children = len(newState["children"])
+        newState["selected"] = state["children"][num_children-1:num_children]
+        newState["scroll_top"] = num_children - cls.list_size
+        return newState
+
         
 
 class Application:
@@ -125,11 +145,13 @@ class Application:
         self.listbox.yview_moveto(fraction) 
 
     def bindCallbacks(self):
-        self.root.bind("a", lambda event: self.render(Reducers.moveUpDir(self.state)))
-        self.root.bind("z", lambda event: self.render(Reducers.moveDownDir(self.state)))
+        self.root.bind("-", lambda event: self.render(Reducers.moveUpDir(self.state)))
+        self.root.bind("<Return>", lambda event: self.render(Reducers.moveDownDir(self.state)))
         self.root.bind("<<ListboxSelect>>", lambda event: self.render(self.state))
         self.root.bind("<Down>", lambda event: self.render(Reducers.moveDownSelection(self.state)))
         self.root.bind("<Up>", lambda event: self.render(Reducers.moveUpSelection(self.state)))
+        self.root.bind("g", lambda event: self.render(Reducers.moveTopSelection(self.state)))
+        self.root.bind("<Shift-KeyPress-G>", lambda event: self.render(Reducers.moveBottomSelection(self.state)))
 
     def __init__(self, root):
         state = {
