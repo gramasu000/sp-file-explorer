@@ -99,11 +99,10 @@ class Application:
     def initUI(self, root):
         self.root = root 
         self.root.wm_title("Simple Python File Explorer")
-        self.root.configure(takefocus=0)
         self.root.rowconfigure(1, weight=1)
         self.root.columnconfigure(0, weight=1)
 
-        self.listbox = Listbox(self.root, background="white", activestyle="dotbox", width=100, height=40)
+        self.listbox = Listbox(self.root, background="white", activestyle="dotbox", width=Reducers.list_width, height=Reducers.list_size)
         self.listbox.grid(row=1, column=0, sticky=N+S+E+W) 
         
         self.scrollbar = Scrollbar(self.root, orient=VERTICAL, takefocus=0)
@@ -121,33 +120,34 @@ class Application:
             
         if (self.state == {}):
             self.root.destroy() 
-        else:
-            # Reset Directory Label
-            dir = self.state["dir"]
-            self.label.configure(text=dir)
+            return
+        
+        # Reset Directory Label
+        dir = self.state["dir"]
+        self.label.configure(text=dir)
 
-            # Reset Listbox of children files
-            self.listbox.delete(0, END)        
+        # Reset Listbox of children files
+        self.listbox.delete(0, END)        
         
-            for child in self.state["children"]:
-                path = join(dir, child)
-                if isfile(path):
-                    self.listbox.insert(END, child)
-                    self.listbox.itemconfig(END, background="yellow", selectbackground="orange")
-                elif isdir(path):
-                    self.listbox.insert(END, child + "/") 
-                elif islink(path):
-                    self.listbox.insert(END, child + "/ (L)")
-                    self.listbox.itemconfig(END, background="green", selectbackground="purple")
+        for child in self.state["children"]:
+            path = join(dir, child)
+            if isfile(path):
+                self.listbox.insert(END, child)
+                self.listbox.itemconfig(END, background="yellow", selectbackground="orange")
+            elif isdir(path):
+                self.listbox.insert(END, child + "/") 
+            elif islink(path):
+                self.listbox.insert(END, child + "/ (L)")
+                self.listbox.itemconfig(END, background="green", selectbackground="purple")
         
-            # Select specified children
-            for child in self.state["selected"]:
-                index = self.state["children"].index(child)
-                self.listbox.selection_set(index)
+        # Select specified children
+        for child in self.state["selected"]:
+            index = self.state["children"].index(child)
+            self.listbox.selection_set(index)
         
-            # Set scroll
-            fraction = self.state["scroll_top"] / (len(self.state["children"]) + 1)
-            self.listbox.yview_moveto(fraction) 
+        # Set scroll
+        fraction = self.state["scroll_top"] / (len(self.state["children"]) + 1)
+        self.listbox.yview_moveto(fraction)
 
     def bindCallbacks(self):
         self.root.bind("-", lambda event: self.render(Reducers.moveUpDir(self.state)))
