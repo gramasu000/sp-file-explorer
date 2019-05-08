@@ -1,14 +1,32 @@
 from os import listdir, sep, getcwd
 from os.path import getmtime, getsize, isdir, isfile, islink, dirname, join
 from time import localtime
-from tkinter import Tk, Label, Listbox, Scrollbar, N, S, E, W, VERTICAL, END, DISABLED, NORMAL
+from tkinter import Tk, Label, Listbox, Scrollbar, N, S, E, W, VERTICAL, END, DISABLED, NORMAL, Text, NONE, INSERT, DISABLED
+
+"""
+State represented as a python dictionary.
+
+"""
 
 class Reducers:
 
-    list_size = 40
-    list_width = 100    
-    scroll_trigger = 3
-
+    @staticmethod
+    def getInitState():
+        newState = {}
+        newState["directory"] = getcwd()
+        newState["children"] = listdir(newState["directory"])
+        newState["selected"] = newState["children"][0:1]
+        newState["scroll_data"] = {
+            "list_size": 40,
+            "list_width": 100,
+            "scroll_trigger": 3,
+            "scroll_top": 0
+        }
+        newState["mode"] = "browse"
+        newState["text"] = "SP File Explorer"
+        return newState
+    
+    """
     @staticmethod
     def moveUpDir(state):
         newState = {}
@@ -56,7 +74,7 @@ class Reducers:
         newState = {}
         newState["dir"] = state["dir"]
         newState["children"] = state["children"]
-
+        
         selected = state["selected"][0]
         index = state["children"].index(selected)
         if index == 0: 
@@ -93,6 +111,41 @@ class Reducers:
     @staticmethod
     def quit(state):
         return {}  
+    """
+
+class Renderer:
+    
+    @staticmethod
+    def render(app, state):
+        app.state = state
+        
+        if state["mode"] == "quit":
+            app.root.destroy()
+            return
+        
+        app.listbox.configure(width=state["scroll_data"]["list_width"], height=state["scroll_data"]["list_size"])
+
+        dir = state["directory"]
+        num_children = len(state["children"])
+        app.label.configure(text=dir)
+        app.listbox.delete(0, END)
+        for child in state["children"]:
+            path = join(dir, child)
+            if isfile(path):
+                app.listbox.insert(END, child)
+                app.listbox.itemconfig(END, background="yellow", selectbackground="orange")
+            elif isdir(path):
+                app.listbox.insert(END, child + "/") 
+        
+        for child in state["selected"]:
+            index = state["children"].index(child)
+            app.listbox.selection_set(index)
+            
+        app.listbox.yview_moveto(state["scroll_data"]["scroll_top"] / (num_children + 1))
+        
+        app.text.delete(1.0, END)
+        app.text.insert(INSERT, state["text"])                 
+        app.text.config(state=DISABLED)
 
 class Application:
     
@@ -102,7 +155,7 @@ class Application:
         self.root.rowconfigure(1, weight=1)
         self.root.columnconfigure(0, weight=1)
 
-        self.listbox = Listbox(self.root, background="white", activestyle="dotbox", width=Reducers.list_width, height=Reducers.list_size)
+        self.listbox = Listbox(self.root, background="white", activestyle="dotbox", takefocus=0)
         self.listbox.grid(row=1, column=0, sticky=N+S+E+W) 
         
         self.scrollbar = Scrollbar(self.root, orient=VERTICAL, takefocus=0)
@@ -111,63 +164,27 @@ class Application:
         self.label = Label(self.root, height=1, background="white", takefocus=0)
         self.label.grid(row=0, columnspan=2, sticky=W+E)
          
+        self.text = Text(self.root, height=1, background="white", wrap=NONE, takefocus=0)
+        self.text.grid(row=2, columnspan=2, sticky=W+E)
+
         self.listbox.configure(yscrollcommand=self.scrollbar.set)
         #self.scrollbar["command"] = self.listbox.yview
 
-    def render(self, state):
-        # Save State
-        self.state = state
-            
-        if (self.state == {}):
-            self.root.destroy() 
-            return
-        
-        # Reset Directory Label
-        dir = self.state["dir"]
-        self.label.configure(text=dir)
-
-        # Reset Listbox of children files
-        self.listbox.delete(0, END)        
-        
-        for child in self.state["children"]:
-            path = join(dir, child)
-            if isfile(path):
-                self.listbox.insert(END, child)
-                self.listbox.itemconfig(END, background="yellow", selectbackground="orange")
-            elif isdir(path):
-                self.listbox.insert(END, child + "/") 
-            elif islink(path):
-                self.listbox.insert(END, child + "/ (L)")
-                self.listbox.itemconfig(END, background="green", selectbackground="purple")
-        
-        # Select specified children
-        for child in self.state["selected"]:
-            index = self.state["children"].index(child)
-            self.listbox.selection_set(index)
-        
-        # Set scroll
-        fraction = self.state["scroll_top"] / (len(self.state["children"]) + 1)
-        self.listbox.yview_moveto(fraction)
-
     def bindCallbacks(self):
-        self.root.bind("-", lambda event: self.render(Reducers.moveUpDir(self.state)))
-        self.root.bind("<Return>", lambda event: self.render(Reducers.moveDownDir(self.state)))
-        self.root.bind("<<ListboxSelect>>", lambda event: self.render(self.state))
-        self.root.bind("<Down>", lambda event: self.render(Reducers.moveDownSelection(self.state)))
-        self.root.bind("<Up>", lambda event: self.render(Reducers.moveUpSelection(self.state)))
-        self.root.bind("g", lambda event: self.render(Reducers.moveTopSelection(self.state)))
-        self.root.bind("<Shift-KeyPress-G>", lambda event: self.render(Reducers.moveBottomSelection(self.state)))
-        self.root.bind("q", lambda event: self.render(Reducers.quit(self.state)))
+        #self.root.bind("-", lambda event: self.render(Reducers.moveUpDir(self.state)))
+        #self.root.bind("<Return>", lambda event: self.render(Reducers.moveDownDir(self.state)))
+        #self.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(self, self.state))
+        #self.root.bind("<Down>", lambda event: self.render(Reducers.moveDownSelection(self.state)))
+        #self.listbox.bind("<Up>", lambda event: self.render(Reducers.moveTopSelection(self.state)))
+        #self.root.bind("<Up>", lambda event: self.render(Reducers.moveUpSelection(self.state)))
+        #self.root.bind("g", lambda event: self.render(Reducers.moveTopSelection(self.state)))
+        #self.root.bind("<Shift-KeyPress-G>", lambda event: self.render(Reducers.moveBottomSelection(self.state)))
+        #self.root.bind("q", lambda event: self.render(Reducers.quit(self.state)))
 
     def __init__(self, root):
-        state = {
-            "dir": getcwd(),
-            "children": listdir(getcwd()),
-            "selected": listdir(getcwd())[0:1],
-            "scroll_top": 0  
-        }
+        self.state = Reducers.getInitState()
         self.initUI(root)
-        self.render(state)
+        Renderer.render(self, self.state)
         self.bindCallbacks()
 
 
