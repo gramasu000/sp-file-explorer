@@ -9,20 +9,21 @@ import logging
 State represented as a python dictionary.
 
 """
-LOGGER = None
-def initLogging():
-    global LOGGER
-    formatter = logging.Formatter(style="{", fmt="({name}) {asctime}-{levelname}: {message}")
-    handler1 = logging.StreamHandler()
-    handler1.setLevel(logging.INFO)
-    handler1.setFormatter(formatter)
-    handler2 = logging.FileHandler("sp_file_explorer.log")
-    handler2.setLevel(logging.DEBUG)
-    handler2.setFormatter(formatter)
-    LOGGER = logging.getLogger(__name__)
-    LOGGER.addHandler(handler1)
-    LOGGER.addHandler(handler2)
-    LOGGER.setLevel(logging.DEBUG)
+def initLogging(logger_name, logfile_name):
+    logger = logging.getLogger(logger_name)
+    if len(logger.handlers) == 0 and logger.getEffectiveLevel() == logging.WARN:
+        formatter = logging.Formatter(style="{", fmt="({name}) {asctime}-{levelname}: {message}")
+        handler1 = logging.StreamHandler()
+        handler1.setLevel(logging.INFO)
+        handler1.setFormatter(formatter)
+        handler2 = logging.FileHandler(logfile_name)
+        handler2.setLevel(logging.DEBUG)
+        handler2.setFormatter(formatter)
+        logger.addHandler(handler1)
+        logger.addHandler(handler2)
+        logger.setLevel(logging.DEBUG)
+    return logger
+
 
 class Reducers:
 
@@ -288,7 +289,8 @@ class Application:
 
 
 if __name__ == "__main__":
-    initLogging()
+    global LOGGER
+    LOGGER = initLogging(__name__, "sp_file_explorer.log")
     print(LOGGER)
     LOGGER.info("Starting Application")
     ROOT = Tk()
