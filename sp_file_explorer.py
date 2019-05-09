@@ -1,12 +1,26 @@
 from os import listdir, sep, getcwd
 from os.path import getmtime, getsize, isdir, isfile, islink, dirname, join
 from time import localtime
-from tkinter import Tk, Label, Listbox, Scrollbar, N, S, E, W, VERTICAL, END, DISABLED, NORMAL, Text, NONE, INSERT, DISABLED
+from tkinter import Tk, Label, Listbox, Scrollbar, Text, N, S, E, W, VERTICAL, END, DISABLED, NORMAL, NONE, INSERT, DISABLED, StringVar
+import logging
 
 """
 State represented as a python dictionary.
 
 """
+LOGGER = None
+def initLogging():
+    global LOGGER
+    formatter = logging.Formatter(style="{", fmt="({name}) {asctime}-{levelname}: {message}")
+    handler1 = logging.StreamHandler()
+    handler1.setLevel(logging.INFO)
+    handler1.setFormatter(formatter)
+    handler2 = logging.FileHandler("sp_file_explorer.log")
+    handler2.setLevel(logging.DEBUG)
+    handler2.setFormatter(formatter)
+    LOGGER = logging.getLogger(__name__)
+    LOGGER.addHandler(handler1)
+    LOGGER.addHandler(handler2)
 
 class Reducers:
 
@@ -24,8 +38,27 @@ class Reducers:
         }
         newState["mode"] = "browse"
         newState["text"] = "SP File Explorer"
+        LOGGER.info(f"Generated initial app state")
+        LOGGER.debug(f"Generated app state dictionary is {newState}")
         return newState
     
+    @staticmethod
+    def changeModeToBrowse(state):
+        newState = state
+        newState["mode"] = "browse"
+        newState["text"] = "SP File Explorer"
+        LOGGER.info(f"Changed app state to browse mode")
+        LOGGER.debug(f"changed {state} to {newState}")
+        return newState
+        
+    @staticmethod
+    def changeModeToCommand(state):
+        newState = state
+        newState["mode"] = "command"
+        newState["text"] = ":"
+        LOGGER.info(f"Changed app state to command mode")
+        LOGGER.debug(f"changed {state} to {newState}")
+        return newState
     """
     @staticmethod
     def moveUpDir(state):
@@ -117,13 +150,20 @@ class Renderer:
     
     @staticmethod
     def render(app, state):
+        LOGGER.info(f"Rendering application - Saving state dictionary")
         app.state = state
+        LOGGER.debug(f"Rendering application - {app.state}")
         
         if state["mode"] == "quit":
+            LOGGER.info(f"Quitting Application")
             app.root.destroy()
             return
         
+        LOGGER.info(f"Rendering application - Saving state dictionary")
         app.listbox.configure(width=state["scroll_data"]["list_width"], height=state["scroll_data"]["list_size"])
+        LOGGER.debug(f"Rendering application - Listbox width is {state['scroll_data']['list_width']} characters") 
+        LOGGER.debug(f"Rendering application - Listbox height is {state['scroll_data']['list_width']} lines")
+        app.text.configure(width=state["scroll_data"]["list_width"])
 
         dir = state["directory"]
         num_children = len(state["children"])
@@ -142,10 +182,16 @@ class Renderer:
             app.listbox.selection_set(index)
             
         app.listbox.yview_moveto(state["scroll_data"]["scroll_top"] / (num_children + 1))
-        
-        app.text.delete(1.0, END)
-        app.text.insert(INSERT, state["text"])                 
-        app.text.config(state=DISABLED)
+
+        #app.text.delete("1.0", END)
+        #app.text.insert(END, state["text"])                 
+        print(state["text"])
+        if state["mode"] != "command":        
+            app.text.configure(state=DISABLED)
+            # app.root.focus_set()
+        else:
+            app.text.configure(state=NORMAL)
+            app.text.focus_set()    
 
 class Application:
     
@@ -171,9 +217,11 @@ class Application:
         #self.scrollbar["command"] = self.listbox.yview
 
     def bindCallbacks(self):
+        pass
         #self.root.bind("-", lambda event: self.render(Reducers.moveUpDir(self.state)))
         #self.root.bind("<Return>", lambda event: self.render(Reducers.moveDownDir(self.state)))
-        #self.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(self, self.state))
+        self.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(self, Reducers.changeModeToBrowse(self.state)))
+        self.root.bind("l", lambda event: Renderer.render(self, Reducers.changeModeToBrowse(self.state)))
         #self.root.bind("<Down>", lambda event: self.render(Reducers.moveDownSelection(self.state)))
         #self.listbox.bind("<Up>", lambda event: self.render(Reducers.moveTopSelection(self.state)))
         #self.root.bind("<Up>", lambda event: self.render(Reducers.moveUpSelection(self.state)))
@@ -189,6 +237,7 @@ class Application:
 
 
 if __name__ == "__main__":
+    initLogging()
     ROOT = Tk()
     APP = Application(ROOT)
     APP.root.mainloop()
