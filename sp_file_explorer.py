@@ -46,22 +46,49 @@ class Reducers:
         return newState
     
     @staticmethod
-    def changeModeToBrowse(state):
-        newState = state
+    def deepCopy(state):
+        newState = {}
+        for key in state:
+            newState[key] = state[key]
+        return newState
+    
+    @classmethod
+    def changeModeToBrowse(cls, state):
+        newState = cls.deepCopy(state)
         newState["mode"] = "browse"
         newState["text"] = "SP File Explorer"
         LOGGER.info(f"Changed app state to browse mode")
         LOGGER.debug(f"changed {state} to {newState}")
         return newState
         
-    @staticmethod
-    def changeModeToCommand(state):
-        newState = state
+    @classmethod
+    def changeModeToCommand(cls, state):
+        newState = cls.deepCopy(state)
         newState["mode"] = "command"
         newState["text"] = ":"
         LOGGER.info(f"Changed app state to command mode")
         LOGGER.debug(f"changed {state} to {newState}")
         return newState
+
+    @classmethod
+    def deleteKeyNoCommand(cls, state):
+        if state["mode"] == "command" and len(state["text"]) <= 1:
+            return cls.changeModeToBrowse(state)
+        elif state["mode"] == "command" and len(state["text"]) > 1:
+            newState = cls.deepCopy(state)
+            cmd_length = len(newState["text"])
+            newState["text"] = state["text"][0:cmd_length-1]
+            return newState
+        else: 
+            return cls.deepCopy(state)
+
+    @classmethod
+    def typeCommand(cls, state, event):
+        newState = cls.deepCopy(state)
+        if state["mode"] == "command":
+            newState["text"] += event.char
+        return newState 
+
     """
     @staticmethod
     def moveUpDir(state):
@@ -272,8 +299,13 @@ class Application:
         #app.root.bind("<Return>", lambda event: app.render(Reducers.moveDownDir(app.state)))
         LOGGER.debug(f"Binding virtual event of listbox selection with mouse to changeModeToBrowse reducer - so the mouse does not affect selection")
         app.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(app, Reducers.changeModeToBrowse(app.state)))
-        LOGGER.debug(f"Binding 'l' key to changeModeToCommand reducer")
-        app.root.bind("l", lambda event: Renderer.render(app, Reducers.changeModeToCommand(app.state)))
+        app.root.bind("<Escape>", lambda event: Renderer.render(app, Reducers.changeModeToBrowse(app.state)))
+        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, Reducers.deleteKeyNoCommand(app.state)))
+        app.root.bind("<Key>", lambda event: Renderer.render(app, Reducers.typeCommand(app.state, event)))
+         
+        LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
+        app.root.bind(":", lambda event: Renderer.render(app, Reducers.changeModeToCommand(app.state)))
+        
         #app.root.bind("<Down>", lambda event: app.render(Reducers.moveDownSelection(app.state)))
         #app.listbox.bind("<Up>", lambda event: app.render(Reducers.moveTopSelection(app.state)))
         #app.root.bind("<Up>", lambda event: app.render(Reducers.moveUpSelection(app.state)))
