@@ -46,24 +46,24 @@ class Reducers:
         return newState
     
     @staticmethod
-    def deepCopy(state):
+    def _deepCopy(state):
         newState = {}
         for key in state:
             newState[key] = state[key]
         return newState
-    
+
     @classmethod
     def changeModeToBrowse(cls, state):
-        newState = cls.deepCopy(state)
+        newState = cls._deepCopy(state)
         newState["mode"] = "browse"
         newState["text"] = "SP File Explorer"
         LOGGER.info(f"Changed app state to browse mode")
         LOGGER.debug(f"changed {state} to {newState}")
         return newState
-        
+
     @classmethod
     def changeModeToCommand(cls, state):
-        newState = cls.deepCopy(state)
+        newState = cls._deepCopy(state)
         newState["mode"] = "command"
         newState["text"] = ":"
         LOGGER.info(f"Changed app state to command mode")
@@ -71,87 +71,113 @@ class Reducers:
         return newState
 
     @classmethod
-    def deleteKeyNoCommand(cls, state):
+    def _deleteText(cls, state):
+        newState = cls._deepCopy(state)
+        cmd_length = len(state["text"])
+        newState["text"] = state["text"][0:cmd_length-1]
+        return newState
+
+    @classmethod
+    def _addText(cls, state, char):
+        newState = cls._deepCopy(state)
+        newState["text"] += char
+        return newState 
+
+    @classmethod
+    def deleteKey(cls, state):
         if state["mode"] == "command" and len(state["text"]) <= 1:
             return cls.changeModeToBrowse(state)
         elif state["mode"] == "command" and len(state["text"]) > 1:
-            newState = cls.deepCopy(state)
-            cmd_length = len(newState["text"])
-            newState["text"] = state["text"][0:cmd_length-1]
-            return newState
+            return cls._deleteText(state)
         else: 
-            return cls.deepCopy(state)
+            return cls._deepCopy(state)
 
     @classmethod
-    def typeCommand(cls, state, event):
-        newState = cls.deepCopy(state)
+    def key(cls, state, event):
         if state["mode"] == "command":
-            newState["text"] += event.char
-        return newState 
+            return cls._addText(state, event.char)
+        else:
+            return cls._deepCopy(state) 
+
+    @classmethod
+    def _moveUpDir(cls, state):
+        newState = cls._deepCopy(state)
+        newState["directory"] = dirname(state["directory"])
+        newState["children"] = listdir(newState["directory"])
+        newState["selected"] = newState["children"][0:1]
+        newState["scroll_data"]["scroll_top"] = 0
+        newState["mode"] = "browse"
+        newState["text"] = "Moved up directory"
+        return newState
+
+    @classmethod
+    def _moveDownDir(cls, state):
+        newState = cls._deepCopy(state)
+        if len(state["selected"]) != 0:
+            newState["directory"] = join(state["directory"],  state["selected"][0])
+            newState["children"] = listdir(newState["directory"])
+            newState["selected"] = newState["children"][0:1]
+            newState["scroll_data"]["scroll_top"] = 0
+        newState["mode"] = "browse"
+        newState["text"] = "Moved down directory"
+        return newState
+    
+    @classmethod
+    def _moveDownSelection(cls, state):
+        newState = cls._deepCopy(state)
+        if len(state["selected"]) != 0:
+            selected = state["selected"][0]
+            index = state["children"].index(selected)
+            if index == len(state["children"]) - 1:
+                new_index = index 
+            else:
+                new_index = index + 1            
+            newState["selected"] = newState["children"][new_index:new_index+1]
+
+            window_index = new_index - state["scroll_data"]["scroll_top"]
+            num_children = len(newState["children"])
+            if state["scroll_data"]["list_size"] - window_index < state["scroll_data"]["scroll_trigger"] and num_children - index >= state["scroll_data"]["scroll_trigger"]:
+                newState["scroll_data"]["scroll_top"] += 1
+        newState["mode"] = "browse"
+        newState["text"] = "Moved selection down"
+        return newState
+
+    @classmethod
+    def _moveUpSelection(cls, state):
+        newState = cls._deepCopy(state)
+       
+        if len(state["selected"]) != 0: 
+            selected = state["selected"][0]
+            index = state["children"].index(selected)
+            if index == 0: 
+                new_index = index
+            else:
+                new_index = index - 1
+            newState["selected"] = newState["children"][new_index:new_index+1]
+        
+            window_index = new_index - state["scroll_data"]["scroll_top"]
+            if window_index < state["scroll_data"]["scroll_trigger"] and new_index >= state["scroll_data"]["scroll_trigger"]:
+                newState["scroll_data"]["scroll_top"] -= 1
+        newState["mode"] = "browse"
+        newState["text"] = "Moved selection up"
+        return newState
+
+    @classmethod
+    def returnKey(cls, state):
+        if state["mode"] == "command":
+            if state["text"] == ":mvdir up":
+                return cls._moveUpDir(state)
+            elif state["text"] == ":mvdir down":
+                return cls._moveDownDir(state)
+            elif state["text"] == ":mvsel up":
+                return cls._moveUpSelection(state)
+            elif state["text"] == ":mvsel down":
+                return cls._moveDownSelection(state)
+            else:    
+                return cls.changeModeToBrowse(state)
+
 
     """
-    @staticmethod
-    def moveUpDir(state):
-        newState = {}
-        newState["dir"] = dirname(state["dir"])
-        newState["children"] = listdir(newState["dir"])
-        newState["selected"] = newState["children"][0:1]
-        newState["scroll_top"] = 0
-        return newState
-
-    @staticmethod
-    def moveDownDir(state):
-        if len(state["selected"]) != 0:
-            newState = {}
-            newState["dir"] = join(state["dir"],  state["selected"][0])
-            newState["children"] = listdir(newState["dir"])
-            newState["selected"] = newState["children"][0:1]
-            newState["scroll_top"] = 0
-            return newState
-        else:
-            return state
-
-    @classmethod
-    def moveDownSelection(cls, state):
-        newState = {}
-        newState["dir"] = state["dir"]
-        newState["children"] = state["children"]
-
-        selected = state["selected"][0]
-        index = state["children"].index(selected)
-        if index == len(state["children"]) - 1:
-            new_index = index 
-        else:
-            new_index = index + 1            
-        newState["selected"] = newState["children"][new_index:new_index+1]
-
-        newState["scroll_top"] = state["scroll_top"]
-        window_index = new_index - state["scroll_top"]
-        num_children = len(newState["children"])
-        if cls.list_size - window_index < cls.scroll_trigger and num_children - index >= cls.scroll_trigger:
-            newState["scroll_top"] += 1
-        return newState
-
-    @classmethod
-    def moveUpSelection(cls, state):
-        newState = {}
-        newState["dir"] = state["dir"]
-        newState["children"] = state["children"]
-        
-        selected = state["selected"][0]
-        index = state["children"].index(selected)
-        if index == 0: 
-            new_index = index
-        else:
-            new_index = index - 1
-        newState["selected"] = newState["children"][new_index:new_index+1]
-             
-        newState["scroll_top"] = state["scroll_top"]
-        window_index = new_index - state["scroll_top"]
-        if window_index < cls.scroll_trigger and new_index >= cls.scroll_trigger:
-            newState["scroll_top"] -= 1
-        return newState
-
     @staticmethod
     def moveTopSelection(state):
         newState = {}
@@ -181,7 +207,7 @@ class Renderer:
     @staticmethod
     def _render_label(app, state):
         dir = state["directory"]
-        LOGGER.info(f"Rendering application - Setting Label to current directory")
+        LOGGER.debug(f"Rendering application - Setting Label to current directory")
         app.label.configure(text=dir)
         LOGGER.debug(f"Rendering application - current directory is {dir}")
     
@@ -189,7 +215,7 @@ class Renderer:
     def _render_listbox_items(app, state):
         dir = state["directory"]
         num_children = len(state["children"])
-        LOGGER.info(f"Rendering application - Setting Listbox to contain children")
+        LOGGER.debug(f"Rendering application - Setting Listbox to contain children")
         app.listbox.delete(0, END)
         LOGGER.debug(f"Rendering application - children list is {state['children']} of length {num_children}")
         for child in state["children"]:
@@ -204,7 +230,7 @@ class Renderer:
 
     @staticmethod
     def _select_selected_children(app, state):
-        LOGGER.info(f"Rendering application - selecting children")
+        LOGGER.debug(f"Rendering application - selecting children")
         LOGGER.debug(f"Rendering application - selected children list is {state['selected']}")
         for child in state["selected"]:
             index = state["children"].index(child)
@@ -213,14 +239,14 @@ class Renderer:
     @staticmethod
     def _set_scroll_position(app, state):
         num_children = len(state["children"])
-        LOGGER.info(f"Rendering application - setting scroll")
+        LOGGER.debug(f"Rendering application - setting scroll")
         fraction = state["scroll_data"]["scroll_top"] / (num_children + 1)
         app.listbox.yview_moveto(fraction)
         LOGGER.debug(f"Rendering application - scroll fraction is {fraction}")
             
     @staticmethod
     def _render_text(app, state):
-        LOGGER.info(f"Rendering application - Setting text")
+        LOGGER.debug(f"Rendering application - Setting text")
         app.text.configure(state=NORMAL)
         app.text.delete("1.0", END)
         app.text.insert(END, state["text"])                 
@@ -234,13 +260,13 @@ class Renderer:
 
     @staticmethod
     def _save_state_in_app(app, state):
-        LOGGER.info(f"Rendering application - Saving state dictionary")
+        LOGGER.debug(f"Rendering application - Saving state dictionary")
         app.state = state
         LOGGER.debug(f"Rendering application - State: {app.state}")
 
     @staticmethod
     def _set_sizes_of_listbox(app, state):
-        LOGGER.info(f"Rendering application - Sizing listbox widget")
+        LOGGER.debug(f"Rendering application - Sizing listbox widget")
         app.listbox.configure(width=state["scroll_data"]["list_width"], height=state["scroll_data"]["list_size"])
         LOGGER.debug(f"Rendering application - Listbox width is {state['scroll_data']['list_width']} characters") 
         LOGGER.debug(f"Rendering application - Listbox height is {state['scroll_data']['list_size']} lines")
@@ -300,8 +326,9 @@ class Application:
         LOGGER.debug(f"Binding virtual event of listbox selection with mouse to changeModeToBrowse reducer - so the mouse does not affect selection")
         app.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(app, Reducers.changeModeToBrowse(app.state)))
         app.root.bind("<Escape>", lambda event: Renderer.render(app, Reducers.changeModeToBrowse(app.state)))
-        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, Reducers.deleteKeyNoCommand(app.state)))
-        app.root.bind("<Key>", lambda event: Renderer.render(app, Reducers.typeCommand(app.state, event)))
+        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, Reducers.deleteKey(app.state)))
+        app.root.bind("<Key>", lambda event: Renderer.render(app, Reducers.key(app.state, event)))
+        app.root.bind("<Return>", lambda event: Renderer.render(app, Reducers.returnKey(app.state)))
          
         LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
         app.root.bind(":", lambda event: Renderer.render(app, Reducers.changeModeToCommand(app.state)))
