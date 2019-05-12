@@ -25,7 +25,7 @@ def initLogging(logger_name, logfile_name):
     return logger
 
 
-class Reducers:
+class BasicReducers:
 
     @staticmethod
     def getInitState():
@@ -39,92 +39,80 @@ class Reducers:
             "scroll_trigger": 3,
             "scroll_top": 0
         }
+        newState["prompt_data"] = {
+            "cmd_prompt": "(Command):",
+            "brs_prompt": "(Browse) "
+        }
         newState["mode"] = "browse"
-        newState["text"] = "SP File Explorer"
+        newState["text"] = newState["prompt_data"]["brs_prompt"] + "SP File Explorer"
         LOGGER.info(f"Generated initial app state")
         LOGGER.debug(f"Generated app state dictionary is {newState}")
         return newState
     
     @staticmethod
-    def _deepCopy(state):
+    def deepCopy(state):
         newState = {}
         for key in state:
             newState[key] = state[key]
         return newState
 
     @classmethod
-    def changeModeToBrowse(cls, state):
-        newState = cls._deepCopy(state)
+    def changeModeToBrowse(cls, state, text):
+        newState = cls.deepCopy(state)
         newState["mode"] = "browse"
-        newState["text"] = "SP File Explorer"
+        newState["text"] = newState["prompt_data"]["brs_prompt"] + text
         LOGGER.info(f"Changed app state to browse mode")
         LOGGER.debug(f"changed {state} to {newState}")
         return newState
 
     @classmethod
-    def changeModeToCommand(cls, state):
-        newState = cls._deepCopy(state)
+    def changeModeToCommand(cls, state, text):
+        newState = cls.deepCopy(state)
         newState["mode"] = "command"
-        newState["text"] = ":"
+        newState["text"] = newState["prompt_data"]["cmd_prompt"] + text
         LOGGER.info(f"Changed app state to command mode")
         LOGGER.debug(f"changed {state} to {newState}")
         return newState
 
     @classmethod
-    def _deleteText(cls, state):
-        newState = cls._deepCopy(state)
+    def deleteText(cls, state):
+        newState = cls.deepCopy(state)
         cmd_length = len(state["text"])
         newState["text"] = state["text"][0:cmd_length-1]
         return newState
 
     @classmethod
-    def _addText(cls, state, char):
-        newState = cls._deepCopy(state)
+    def addText(cls, state, char):
+        newState = cls.deepCopy(state)
         newState["text"] += char
         return newState 
-
+    
     @classmethod
-    def deleteKey(cls, state):
-        if state["mode"] == "command" and len(state["text"]) <= 1:
-            return cls.changeModeToBrowse(state)
-        elif state["mode"] == "command" and len(state["text"]) > 1:
-            return cls._deleteText(state)
-        else: 
-            return cls._deepCopy(state)
-
-    @classmethod
-    def key(cls, state, event):
-        if state["mode"] == "command":
-            return cls._addText(state, event.char)
-        else:
-            return cls._deepCopy(state) 
-
-    @classmethod
-    def _moveUpDir(cls, state):
-        newState = cls._deepCopy(state)
+    def moveUpDir(cls, state):
+        newState = cls.deepCopy(state)
         newState["directory"] = dirname(state["directory"])
         newState["children"] = listdir(newState["directory"])
         newState["selected"] = newState["children"][0:1]
         newState["scroll_data"]["scroll_top"] = 0
         newState["mode"] = "browse"
-        newState["text"] = "Moved up directory"
+        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved up directory"
         return newState
 
     @classmethod
-    def _moveDownDir(cls, state):
-        newState = cls._deepCopy(state)
+    def moveDownDir(cls, state):
+        newState = cls.deepCopy(state)
         if len(state["selected"]) != 0:
             newState["directory"] = join(state["directory"],  state["selected"][0])
             newState["children"] = listdir(newState["directory"])
             newState["selected"] = newState["children"][0:1]
             newState["scroll_data"]["scroll_top"] = 0
         newState["mode"] = "browse"
-        newState["text"] = "Moved down directory"
+        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved down directory"
         return newState
     
     @classmethod
-    def _moveDownSelection(cls, state):
-        newState = cls._deepCopy(state)
+    def moveDownSelection(cls, state):
+        newState = cls.deepCopy(state)
         if len(state["selected"]) != 0:
             selected = state["selected"][0]
             index = state["children"].index(selected)
@@ -139,12 +127,12 @@ class Reducers:
             if state["scroll_data"]["list_size"] - window_index < state["scroll_data"]["scroll_trigger"] and num_children - index >= state["scroll_data"]["scroll_trigger"]:
                 newState["scroll_data"]["scroll_top"] += 1
         newState["mode"] = "browse"
-        newState["text"] = "Moved selection down"
+        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved selection down"
         return newState
 
     @classmethod
-    def _moveUpSelection(cls, state):
-        newState = cls._deepCopy(state)
+    def moveUpSelection(cls, state):
+        newState = cls.deepCopy(state)
        
         if len(state["selected"]) != 0: 
             selected = state["selected"][0]
@@ -159,22 +147,8 @@ class Reducers:
             if window_index < state["scroll_data"]["scroll_trigger"] and new_index >= state["scroll_data"]["scroll_trigger"]:
                 newState["scroll_data"]["scroll_top"] -= 1
         newState["mode"] = "browse"
-        newState["text"] = "Moved selection up"
+        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved selection up"
         return newState
-
-    @classmethod
-    def returnKey(cls, state):
-        if state["mode"] == "command":
-            if state["text"] == ":mvdir up":
-                return cls._moveUpDir(state)
-            elif state["text"] == ":mvdir down":
-                return cls._moveDownDir(state)
-            elif state["text"] == ":mvsel up":
-                return cls._moveUpSelection(state)
-            elif state["text"] == ":mvsel down":
-                return cls._moveDownSelection(state)
-            else:    
-                return cls.changeModeToBrowse(state)
 
 
     """
@@ -201,6 +175,47 @@ class Reducers:
     def quit(state):
         return {}  
     """
+        
+class KeyBindReducers:
+
+    @staticmethod
+    def deleteKey(state):
+        if state["mode"] == "command" and state["text"] == state["prompt_data"]["cmd_prompt"]:
+            return BasicReducers.changeModeToBrowse(state, "SP File Explorer")
+        elif state["mode"] == "command":
+            return BasicReducers.deleteText(state)
+        else: 
+            return BasicReducers.deepCopy(state)
+
+    @staticmethod
+    def key(state, event):
+        if state["mode"] == "command":
+            return BasicReducers.addText(state, event.char)
+        else:
+            return BasicReducers.deepCopy(state) 
+
+    @staticmethod
+    def returnKey(state):
+        length = len(state["prompt_data"]["cmd_prompt"])
+        if state["mode"] == "command":
+            if state["text"][length:] == "mvdir up":
+                return BasicReducers.moveUpDir(state)
+            elif state["text"][length:] == "mvdir down":
+                return BasicReducers.moveDownDir(state)
+            elif state["text"][length:] == "mvsel up":
+                return BasicReducers.moveUpSelection(state)
+            elif state["text"][length:] == "mvsel down":
+                return BasicReducers.moveDownSelection(state)
+            else:    
+                return BasicReducers.changeModeToBrowse(state, "Error - Unrecognized Command")
+
+    @staticmethod
+    def colonKey(state):
+        if state["mode"] == "browse":
+            return BasicReducers.changeModeToCommand(state, "")
+
+    def escapeSelectKeys(state):
+        return BasicReducers.deepCopy(state)
 
 class Renderer:
    
@@ -290,7 +305,7 @@ class Renderer:
         cls._set_scroll_position(app, state)
         cls._render_text(app, state)
         
-        
+    
 class Application:
     
     def initUI(app, root):
@@ -324,14 +339,14 @@ class Application:
         #app.root.bind("-", lambda event: app.render(Reducers.moveUpDir(app.state)))
         #app.root.bind("<Return>", lambda event: app.render(Reducers.moveDownDir(app.state)))
         LOGGER.debug(f"Binding virtual event of listbox selection with mouse to changeModeToBrowse reducer - so the mouse does not affect selection")
-        app.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(app, Reducers.changeModeToBrowse(app.state)))
-        app.root.bind("<Escape>", lambda event: Renderer.render(app, Reducers.changeModeToBrowse(app.state)))
-        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, Reducers.deleteKey(app.state)))
-        app.root.bind("<Key>", lambda event: Renderer.render(app, Reducers.key(app.state, event)))
-        app.root.bind("<Return>", lambda event: Renderer.render(app, Reducers.returnKey(app.state)))
+        app.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(app, KeyBindReducers.escapeSelectKeys(app.state)))
+        app.root.bind("<Escape>", lambda event: Renderer.render(app, KeyBindReducers.escapeSelectKeys(app.state)))
+        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, KeyBindReducers.deleteKey(app.state)))
+        app.root.bind("<Key>", lambda event: Renderer.render(app, KeyBindReducers.key(app.state, event)))
+        app.root.bind("<Return>", lambda event: Renderer.render(app, KeyBindReducers.returnKey(app.state)))
          
         LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
-        app.root.bind(":", lambda event: Renderer.render(app, Reducers.changeModeToCommand(app.state)))
+        app.root.bind(":", lambda event: Renderer.render(app, KeyBindReducers.colonKey(app.state)))
         
         #app.root.bind("<Down>", lambda event: app.render(Reducers.moveDownSelection(app.state)))
         #app.listbox.bind("<Up>", lambda event: app.render(Reducers.moveTopSelection(app.state)))
@@ -341,7 +356,7 @@ class Application:
         #app.root.bind("q", lambda event: app.render(Reducers.quit(app.state)))
 
     def __init__(app, root):
-        app.state = Reducers.getInitState()
+        app.state = BasicReducers.getInitState()
         app.initUI(root)
         Renderer.render(app, app.state)
         app.bindCallbacks()
