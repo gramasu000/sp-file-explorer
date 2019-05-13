@@ -1,8 +1,60 @@
 import sp_file_explorer
 from logging import INFO, DEBUG, WARN, getLogger
 from unittest import TestCase, main
-from os import getcwd, listdir
-from os.path import isfile, join
+from os import getcwd, listdir, sep
+from os.path import isfile, join, splitdrive
+import string
+import random
+
+class RandomState: 
+
+    @classmethod
+    def getRandomString(cls):
+        length = random.randint(0, 20)
+        chars = string.ascii_letters + string.digits
+        str = "".join(random.choice(chars) for i in range(length))
+        return str
+
+    @classmethod
+    def getRandomDir(cls):
+        num_dirs = random.randint(0,10)
+        dir = splitdrive(getcwd())[0] + sep
+        for i in range(num_dirs-1):
+            dir += cls.getRandomString() + sep
+        dir += cls.getRandomString()
+        return dir
+
+    @classmethod
+    def getRandomList(cls):
+        length = random.randint(0, 100)
+        list = [cls.getRandomString() for i in range(length)]
+        return list
+    
+    @classmethod
+    def getRandomSubset(cls, list):
+        length = random.randint(0, len(list))
+        sub_list = random.sample(list, length)
+        return sub_list
+
+    @classmethod
+    def getRandomState(cls):
+        newState = {}
+        newState["directory"] = cls.getRandomDir()
+        newState["children"] = cls.getRandomList()
+        newState["selected"] = cls.getRandomSubset(newState["children"])
+        newState["scroll_data"] = {
+            "list_size": random.randint(0, 100),
+            "list_width": random.randint(0, 100),
+            "scroll_trigger": random.randint(0, 100),
+            "scroll_top": random.randint(0, 100)
+        }
+        newState["prompt_data"] = {
+            "cmd_prompt": cls.getRandomString(),
+            "brs_prompt": cls.getRandomString()
+        }
+        newState["mode"] = cls.getRandomString()
+        newState["text"] = cls.getRandomString()
+        return newState
 
 
 class TestLogger(TestCase):
@@ -92,7 +144,7 @@ class TestBasicReducerSameState(TestCase):
     def setUp(self):
         sp_file_explorer.LOGGER = getLogger()
         sp_file_explorer.LOGGER.setLevel(WARN)
-        self.state = sp_file_explorer.BasicReducers.getInitState()
+        self.state = RandomState.getRandomState()
         self.newState = sp_file_explorer.BasicReducers.sameState(self.state) 
 
     def test_copied_state_keys(self):
@@ -136,9 +188,7 @@ class TestBasicReducerChangeModeToBrowse(TestCase):
     def setUp(self):
         sp_file_explorer.LOGGER = getLogger()
         sp_file_explorer.LOGGER.setLevel(WARN)
-        self.state = sp_file_explorer.BasicReducers.getInitState()
-        self.state["mode"] = "command"
-        self.state["text"] = "(Command):blah"
+        self.state = RandomState.getRandomState()
         self.brs_text = "test"
         self.newState = sp_file_explorer.BasicReducers.changeModeToBrowse(self.state, self.brs_text) 
     
@@ -152,12 +202,10 @@ class TestBasicReducerChangeModeToBrowse(TestCase):
         self.assertFalse(self.newState["prompt_data"] is self.state["prompt_data"])
 
     def test_state_mode(self):
-        self.assertEqual(self.state["mode"], "command")
         self.assertEqual(self.newState["mode"], "browse")
 
     def test_state_text(self):
-        self.assertEqual(self.state["text"], "(Command):blah")
-        self.assertEqual(self.newState["text"], "(Browse) test")
+        self.assertEqual(self.newState["text"], self.newState["prompt_data"]["brs_prompt"] + self.brs_text)
 
     def test_copied_prompt_data_values(self):
         for key in self.state["prompt_data"]:
