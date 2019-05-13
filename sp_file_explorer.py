@@ -131,7 +131,6 @@ class BasicReducers:
     @classmethod
     def moveUpSelection(cls, state):
         newState = cls.sameState(state)
-       
         if len(state["selected"]) != 0: 
             selected = state["selected"][0]
             index = state["children"].index(selected)

@@ -84,6 +84,7 @@ class TestLogger(TestCase):
         path = join(getcwd(), self.logfile)
         self.assertTrue(isfile(path))
 
+
 class TestBasicReducerGetInitState(TestCase):
     
     def setUp(self):
@@ -92,23 +93,23 @@ class TestBasicReducerGetInitState(TestCase):
         self.state = sp_file_explorer.BasicReducers.getInitState()
 
     def test_state_keys(self):
-        self.assertTrue("directory" in self.state)
-        self.assertTrue("children" in self.state)
-        self.assertTrue("selected" in self.state)
-        self.assertTrue("scroll_data" in self.state)
-        self.assertTrue("prompt_data" in self.state)
-        self.assertTrue("mode" in self.state)
-        self.assertTrue("text" in self.state)
+        self.assertIn("directory", self.state)
+        self.assertIn("children", self.state)
+        self.assertIn("selected", self.state)
+        self.assertIn("scroll_data", self.state)
+        self.assertIn("prompt_data", self.state)
+        self.assertIn("mode", self.state)
+        self.assertIn("text", self.state)
 
     def test_scroll_data_keys(self):
-        self.assertTrue("list_size" in self.state["scroll_data"])
-        self.assertTrue("list_width" in self.state["scroll_data"])
-        self.assertTrue("scroll_trigger" in self.state["scroll_data"])
-        self.assertTrue("scroll_top" in self.state["scroll_data"])
+        self.assertIn("list_size", self.state["scroll_data"])
+        self.assertIn("list_width", self.state["scroll_data"])
+        self.assertIn("scroll_trigger", self.state["scroll_data"])
+        self.assertIn("scroll_top", self.state["scroll_data"])
 
     def test_prompt_data_keys(self):
-        self.assertTrue("cmd_prompt" in self.state["prompt_data"])
-        self.assertTrue("brs_prompt" in self.state["prompt_data"])   
+        self.assertIn("cmd_prompt", self.state["prompt_data"])
+        self.assertIn("brs_prompt", self.state["prompt_data"])   
 
     def test_directory(self):
         self.assertEqual(self.state["directory"], getcwd())
@@ -118,8 +119,9 @@ class TestBasicReducerGetInitState(TestCase):
     
     def test_selected(self):
         self.assertEqual(len(self.state["selected"]), 1)
-        self.assertTrue(self.state["selected"][0] in self.state["children"])
+        self.assertIn(self.state["selected"][0], self.state["children"])
         self.assertEqual(self.state["children"].index(self.state["selected"][0]), 0)    
+
     def test_scroll_data(self):
         data = self.state["scroll_data"]
         self.assertEqual(data["list_size"], 40)
@@ -149,24 +151,24 @@ class TestBasicReducerSameState(TestCase):
 
     def test_copied_state_keys(self):
         for key in self.state:
-            self.assertTrue(key in self.newState)
+            self.assertIn(key, self.newState)
 
     def test_copied_scroll_data_keys(self):
         for key in self.state["scroll_data"]:
-            self.assertTrue(key in self.newState["scroll_data"])
+            self.assertIn(key, self.newState["scroll_data"])
 
     def test_copied_prompt_data_keys(self):
         for key in self.state["prompt_data"]:
-            self.assertTrue(key in self.newState["prompt_data"])
+            self.assertIn(key, self.newState["prompt_data"])
 
     def test_deep_copy_state(self):
-        self.assertFalse(self.newState is self.state)
+        self.assertIsNot(self.newState, self.state)
 
     def test_deep_copy_scroll_data(self):
-        self.assertFalse(self.newState["scroll_data"] is self.state["scroll_data"])    
+        self.assertIsNot(self.newState["scroll_data"], self.state["scroll_data"])    
     
     def test_deep_copy_prompt_data(self):
-        self.assertFalse(self.newState["prompt_data"] is self.state["prompt_data"])
+        self.assertIsNot(self.newState["prompt_data"], self.state["prompt_data"])
 
     def test_copied_prompt_data_values(self):
         for key in self.state["prompt_data"]:
@@ -183,6 +185,7 @@ class TestBasicReducerSameState(TestCase):
     def test_copied_state(self):
         self.assertEqual(self.state, self.newState)
 
+
 class TestBasicReducerChangeModeToBrowse(TestCase):
     
     def setUp(self):
@@ -193,13 +196,13 @@ class TestBasicReducerChangeModeToBrowse(TestCase):
         self.newState = sp_file_explorer.BasicReducers.changeModeToBrowse(self.state, self.brs_text) 
     
     def test_deep_copy_state(self):
-        self.assertFalse(self.newState is self.state)
+        self.assertIsNot(self.newState, self.state)
 
     def test_deep_copy_scroll_data(self):
-        self.assertFalse(self.newState["scroll_data"] is self.state["scroll_data"])    
+        self.assertIsNot(self.newState["scroll_data"], self.state["scroll_data"])    
     
     def test_deep_copy_prompt_data(self):
-        self.assertFalse(self.newState["prompt_data"] is self.state["prompt_data"])
+        self.assertIsNot(self.newState["prompt_data"], self.state["prompt_data"])
 
     def test_state_mode(self):
         self.assertEqual(self.newState["mode"], "browse")
@@ -219,6 +222,44 @@ class TestBasicReducerChangeModeToBrowse(TestCase):
         for key in self.state:
             if key != "mode" and key != "text":
                 self.assertEqual(self.state[key], self.newState[key])
+
+
+class TestBasicReducerChangeModeToCommand(TestCase):
+    
+    def setUp(self):
+        sp_file_explorer.LOGGER = getLogger()
+        sp_file_explorer.LOGGER.setLevel(WARN)
+        self.state = RandomState.getRandomState()
+        self.cmd_text = "test"
+        self.newState = sp_file_explorer.BasicReducers.changeModeToCommand(self.state, self.cmd_text) 
+
+    def test_deep_copy_state(self):
+        self.assertIsNot(self.newState, self.state)
+
+    def test_deep_copy_scroll_data(self):
+        self.assertIsNot(self.newState["scroll_data"], self.state["scroll_data"])    
+    
+    def test_deep_copy_prompt_data(self):
+        self.assertIsNot(self.newState["prompt_data"], self.state["prompt_data"])
+
+    def test_state_mode(self):
+        self.assertEqual(self.newState["mode"], "command")
+
+    def test_state_text(self):
+        self.assertEqual(self.newState["text"], self.newState["prompt_data"]["cmd_prompt"] + self.cmd_text)
+
+    def test_copied_prompt_data_values(self):
+        for key in self.state["prompt_data"]:
+            self.assertEqual(self.state["prompt_data"][key], self.newState["prompt_data"][key])
+
+    def test_copied_scroll_data_values(self):
+        for key in self.state["scroll_data"]:
+            self.assertEqual(self.state["scroll_data"][key], self.newState["scroll_data"][key])
+
+    def test_copied_state_other_keys(self):
+        for key in self.state:
+            if key != "mode" and key != "text":
+                self.assertEqual(self.state[key], self.newState[key])    
 
 if __name__ == "__main__":
     main(verbosity=2)
