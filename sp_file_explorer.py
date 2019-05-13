@@ -1,6 +1,7 @@
 from sys import exit
 from os import listdir, sep, getcwd
 from os.path import getmtime, getsize, isdir, isfile, islink, dirname, join
+from copy import deepcopy
 from time import localtime
 from tkinter import Tk, Label, Listbox, Scrollbar, Text, N, S, E, W, VERTICAL, END, DISABLED, NORMAL, NONE, INSERT, DISABLED, StringVar
 import logging
@@ -50,15 +51,12 @@ class BasicReducers:
         return newState
     
     @staticmethod
-    def deepCopy(state):
-        newState = {}
-        for key in state:
-            newState[key] = state[key]
-        return newState
+    def sameState(state):
+        return deepcopy(state) 
 
     @classmethod
     def changeModeToBrowse(cls, state, text):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
         newState["mode"] = "browse"
         newState["text"] = newState["prompt_data"]["brs_prompt"] + text
         LOGGER.info(f"Changed app state to browse mode")
@@ -67,7 +65,7 @@ class BasicReducers:
 
     @classmethod
     def changeModeToCommand(cls, state, text):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
         newState["mode"] = "command"
         newState["text"] = newState["prompt_data"]["cmd_prompt"] + text
         LOGGER.info(f"Changed app state to command mode")
@@ -76,20 +74,20 @@ class BasicReducers:
 
     @classmethod
     def deleteText(cls, state):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
         cmd_length = len(state["text"])
         newState["text"] = state["text"][0:cmd_length-1]
         return newState
 
     @classmethod
     def addText(cls, state, char):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
         newState["text"] += char
         return newState 
     
     @classmethod
     def moveUpDir(cls, state):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
         newState["directory"] = dirname(state["directory"])
         newState["children"] = listdir(newState["directory"])
         newState["selected"] = newState["children"][0:1]
@@ -100,7 +98,7 @@ class BasicReducers:
 
     @classmethod
     def moveDownDir(cls, state):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
         if len(state["selected"]) != 0:
             newState["directory"] = join(state["directory"],  state["selected"][0])
             newState["children"] = listdir(newState["directory"])
@@ -112,7 +110,7 @@ class BasicReducers:
     
     @classmethod
     def moveDownSelection(cls, state):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
         if len(state["selected"]) != 0:
             selected = state["selected"][0]
             index = state["children"].index(selected)
@@ -132,7 +130,7 @@ class BasicReducers:
 
     @classmethod
     def moveUpSelection(cls, state):
-        newState = cls.deepCopy(state)
+        newState = cls.sameState(state)
        
         if len(state["selected"]) != 0: 
             selected = state["selected"][0]
@@ -185,37 +183,39 @@ class KeyBindReducers:
         elif state["mode"] == "command":
             return BasicReducers.deleteText(state)
         else: 
-            return BasicReducers.deepCopy(state)
+            return BasicReducers.sameState(state)
 
     @staticmethod
     def key(state, event):
         if state["mode"] == "command":
             return BasicReducers.addText(state, event.char)
         else:
-            return BasicReducers.deepCopy(state) 
+            return BasicReducers.sameState(state) 
 
     @staticmethod
     def returnKey(state):
         length = len(state["prompt_data"]["cmd_prompt"])
-        if state["mode"] == "command":
-            if state["text"][length:] == "mvdir up":
+        tokens = state["text"][length:].split()
+        if len(tokens) >= 1 and tokens[0] == "mvdir":
+            if len(tokens) >= 2 and tokens[1] == "up":
                 return BasicReducers.moveUpDir(state)
-            elif state["text"][length:] == "mvdir down":
+            elif len(tokens) >= 2 and tokens[1] == "down":
                 return BasicReducers.moveDownDir(state)
-            elif state["text"][length:] == "mvsel up":
+        elif len(tokens) >= 1 and tokens[0] == "mvsel":
+            if len(tokens) >= 2 and tokens[1] == "up":
                 return BasicReducers.moveUpSelection(state)
-            elif state["text"][length:] == "mvsel down":
+            elif len(tokens) >= 2 and tokens[1] == "down":
                 return BasicReducers.moveDownSelection(state)
-            else:    
-                return BasicReducers.changeModeToBrowse(state, "Error - Unrecognized Command")
+        return BasicReducers.changeModeToBrowse(state, "Error - Unrecognized Command")
 
     @staticmethod
     def colonKey(state):
         if state["mode"] == "browse":
             return BasicReducers.changeModeToCommand(state, "")
 
+    @staticmethod
     def escapeSelectKeys(state):
-        return BasicReducers.deepCopy(state)
+        return BasicReducers.sameState(state)
 
 class Renderer:
    
