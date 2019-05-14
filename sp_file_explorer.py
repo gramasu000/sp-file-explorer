@@ -1,8 +1,10 @@
 from sys import exit
-from os import listdir, sep, getcwd
-from os.path import getmtime, getsize, isdir, isfile, islink, dirname, join
-from copy import deepcopy
-from time import localtime
+import os
+import copy
+#from os import listdir, getcwd
+#from os.path import getmtime, getsize, isdir, isfile, islink, dirname, join
+#from copy import deepcopy
+#from time import localtime
 from tkinter import Tk, Label, Listbox, Scrollbar, Text, N, S, E, W, VERTICAL, END, DISABLED, NORMAL, NONE, INSERT, DISABLED, StringVar
 import logging
 
@@ -25,14 +27,42 @@ def initLogging(logger_name, logfile_name):
         logger.setLevel(logging.DEBUG)
     return logger
 
+class FileSystem:
+
+    @staticmethod
+    def currentDir():
+        return os.getcwd()
+
+    @staticmethod
+    def listDir(dir):
+        return os.listdir(dir)
+
+    @staticmethod
+    def parent(path):
+        return os.path.dirname(path)
+
+    @staticmethod
+    def pathOfChild(dir, child):
+        return os.path.join(dir, child)
+
+    @staticmethod
+    def isChildOpenable(path):
+        return os.path.isdir(path)        
+
+    @staticmethod
+    def dirOrFile(path):
+        if os.path.isdir(path):
+            return "dir"
+        elif os.path.isfile(path):
+            return "file"
 
 class BasicReducers:
 
     @staticmethod
     def getInitState():
         newState = {}
-        newState["directory"] = getcwd()
-        newState["children"] = listdir(newState["directory"])
+        newState["directory"] = FileSystem.currentDir()
+        newState["children"] = FileSystem.listDir(newState["directory"])
         newState["selected"] = newState["children"][0:1]
         newState["scroll_data"] = {
             "list_size": 40,
@@ -46,30 +76,29 @@ class BasicReducers:
         }
         newState["mode"] = "browse"
         newState["text"] = newState["prompt_data"]["brs_prompt"] + "SP File Explorer"
-        LOGGER.info(f"Generated initial app state")
-        LOGGER.debug(f"Generated app state dictionary is {newState}")
+        LOGGER.debug(f"Generated initial app state = {newState}")
         return newState
     
     @staticmethod
     def sameState(state):
-        return deepcopy(state) 
+        return copy.deepcopy(state) 
 
     @classmethod
-    def changeModeToBrowse(cls, state, text):
+    def setModeToBrowse(cls, state, text):
         newState = cls.sameState(state)
         newState["mode"] = "browse"
         newState["text"] = newState["prompt_data"]["brs_prompt"] + text
-        LOGGER.info(f"Changed app state to browse mode")
-        LOGGER.debug(f"changed {state} to {newState}")
+        #LOGGER.info(f"Changed app state to browse mode")
+        #LOGGER.debug(f"changed {state} to {newState}")
         return newState
 
     @classmethod
-    def changeModeToCommand(cls, state, text):
+    def setModeToCommand(cls, state, text):
         newState = cls.sameState(state)
         newState["mode"] = "command"
         newState["text"] = newState["prompt_data"]["cmd_prompt"] + text
-        LOGGER.info(f"Changed app state to command mode")
-        LOGGER.debug(f"changed {state} to {newState}")
+        #LOGGER.info(f"Changed app state to command mode")
+        #LOGGER.debug(f"changed {state} to {newState}")
         return newState
 
     @classmethod
@@ -84,101 +113,60 @@ class BasicReducers:
         newState = cls.sameState(state)
         newState["text"] += char
         return newState 
-    
+   
     @classmethod
-    def moveUpDir(cls, state):
+    def moveDir(cls, state, dir):
         newState = cls.sameState(state)
-        newState["directory"] = dirname(state["directory"])
-        newState["children"] = listdir(newState["directory"])
-        newState["selected"] = newState["children"][0:1]
+        newState["directory"] = dir
+        newState["children"] = FileSystem.listDir(dir)
+        newState["selected"] = []
+        return newState
+
+    @classmethod
+    def moveSelection(cls, state, indices):
+        newState = cls.sameState(state)
+        newState["selected"] = [newState["children"][i] for i in indices]
+        return newState
+
+    @classmethod
+    def moveScrollDown(cls, state):
+        newState = cls.sameState(state)
+        index = newState["children"].index(newState["selected"][-1]) 
+        numc = len(newState["children"])
+        size = newState["scroll_data"]["list_size"]
+        trig = newState["scroll_data"]["scroll_trigger"]
+        newState["scroll_data"]["scroll_top"] = min(max(0, index-size+trig), numc-size)
+        return newState
+
+    @classmethod
+    def moveScrollUp(cls, state):
+        newState = cls.sameState(state)
+        index = newState["children"].index(newState["selected"][-1])
+        numc = len(newState["children"])
+        size = newState["scroll_data"]["list_size"]
+        trig = newState["scroll_data"]["scroll_trigger"]
+        newState["scroll_data"]["scroll_top"] = min(max(0, index-trig+1), numc-size)
+        return newState
+   
+    @classmethod
+    def setScrollDefault(cls, state):
+        newState = cls.sameState(state)
         newState["scroll_data"]["scroll_top"] = 0
-        newState["mode"] = "browse"
-        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved up directory"
-        return newState
-
+        return newState 
+ 
     @classmethod
-    def moveDownDir(cls, state):
+    def quit(cls, state):
         newState = cls.sameState(state)
-        if len(state["selected"]) != 0:
-            newState["directory"] = join(state["directory"],  state["selected"][0])
-            newState["children"] = listdir(newState["directory"])
-            newState["selected"] = newState["children"][0:1]
-            newState["scroll_data"]["scroll_top"] = 0
-        newState["mode"] = "browse"
-        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved down directory"
-        return newState
-    
-    @classmethod
-    def moveDownSelection(cls, state):
-        newState = cls.sameState(state)
-        if len(state["selected"]) != 0:
-            selected = state["selected"][0]
-            index = state["children"].index(selected)
-            if index == len(state["children"]) - 1:
-                new_index = index 
-            else:
-                new_index = index + 1            
-            newState["selected"] = newState["children"][new_index:new_index+1]
-
-            window_index = new_index - state["scroll_data"]["scroll_top"]
-            num_children = len(newState["children"])
-            if state["scroll_data"]["list_size"] - window_index < state["scroll_data"]["scroll_trigger"] and num_children - index >= state["scroll_data"]["scroll_trigger"]:
-                newState["scroll_data"]["scroll_top"] += 1
-        newState["mode"] = "browse"
-        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved selection down"
+        newState["mode"] = "quit"
         return newState
 
-    @classmethod
-    def moveUpSelection(cls, state):
-        newState = cls.sameState(state)
-        if len(state["selected"]) != 0: 
-            selected = state["selected"][0]
-            index = state["children"].index(selected)
-            if index == 0: 
-                new_index = index
-            else:
-                new_index = index - 1
-            newState["selected"] = newState["children"][new_index:new_index+1]
-        
-            window_index = new_index - state["scroll_data"]["scroll_top"]
-            if window_index < state["scroll_data"]["scroll_trigger"] and new_index >= state["scroll_data"]["scroll_trigger"]:
-                newState["scroll_data"]["scroll_top"] -= 1
-        newState["mode"] = "browse"
-        newState["text"] = newState["prompt_data"]["brs_prompt"] + "Moved selection up"
-        return newState
-
-
-    """
-    @staticmethod
-    def moveTopSelection(state):
-        newState = {}
-        newState["dir"] = state["dir"]
-        newState["children"] = state["children"]
-        newState["selected"] = state["children"][0:1]
-        newState["scroll_top"] = 0
-        return newState
-
-    @classmethod
-    def moveBottomSelection(cls, state):
-        newState = {}
-        newState["dir"] = state["dir"]
-        newState["children"] = state["children"]
-        num_children = len(newState["children"])
-        newState["selected"] = state["children"][num_children-1:num_children]
-        newState["scroll_top"] = num_children - cls.list_size
-        return newState
-
-    @staticmethod
-    def quit(state):
-        return {}  
-    """
         
 class KeyBindReducers:
 
     @staticmethod
     def deleteKey(state):
         if state["mode"] == "command" and state["text"] == state["prompt_data"]["cmd_prompt"]:
-            return BasicReducers.changeModeToBrowse(state, "SP File Explorer")
+            return BasicReducers.setModeToBrowse(state, "SP File Explorer")
         elif state["mode"] == "command":
             return BasicReducers.deleteText(state)
         else: 
@@ -191,6 +179,72 @@ class KeyBindReducers:
         else:
             return BasicReducers.sameState(state) 
 
+    @staticmethod
+    def upKey(state):
+        if state["mode"] == "browse" and len(state["selected"]) != 0:
+            index = state["children"].index(state["selected"][-1])
+            newState = BasicReducers.setModeToBrowse(state, "Moved Selection Up")
+            if index != 0:
+                newIndex = index - 1
+                newState = BasicReducers.moveSelection(newState, [newIndex])
+                wIndex = newIndex - newState["scroll_data"]["scroll_top"]
+                trig = newState["scroll_data"]["scroll_trigger"]  
+                if wIndex < trig - 1:
+                    newState = BasicReducers.moveScrollUp(newState)
+            return newState
+        else:
+            return BasicReducers.sameState(state) 
+            
+    @staticmethod
+    def downKey(state):
+        if state["mode"] == "browse" and len(state["selected"]) != 0:
+            index = state["children"].index(state["selected"][-1]) 
+            numc = len(state["children"])
+            newState = BasicReducers.setModeToBrowse(state, "Moved Selection Down")
+            if index != numc-1:
+                newIndex = index + 1
+                wIndex = newIndex - newState["scroll_data"]["scroll_top"]
+                numw = state["scroll_data"]["list_size"]
+                trig = state["scroll_data"]["scroll_trigger"]  
+                newState = BasicReducers.moveSelection(newState, [newIndex])
+                if wIndex > numw - trig:
+                    newState = BasicReducers.moveScrollDown(newState)
+            return newState
+        else:
+            return BasicReducers.sameState(state) 
+
+    @staticmethod
+    def shiftUpKey(state):
+        parent = FileSystem.parent(state["directory"])
+        LOGGER.debug(f"\t parent is {parent}")
+        newState = BasicReducers.moveDir(state, parent)
+        newState = BasicReducers.setModeToBrowse(newState, "Moved Up Directory")
+        if len(newState["children"]) > 0:
+            newState = BasicReducers.moveSelection(newState, [0])
+            newState = BasicReducers.moveScrollUp(newState) 
+        else:
+            newState = BasicReducers.setScrollDefault(newState)
+        return newState 
+   
+    @staticmethod
+    def shiftDownKey(state):
+        if len(state["selected"]) > 0:
+            child_path = FileSystem.pathOfChild(state["directory"], state["selected"][-1])
+            openable = FileSystem.isChildOpenable(child_path)
+            if openable:
+                newState = BasicReducers.moveDir(state, child_path)
+                newState = BasicReducers.setModeToBrowse(newState, "Moved Down Directory")
+                if len(newState["children"]) > 0:
+                    newState = BasicReducers.moveSelection(newState, [0])
+                    newState = BasicReducers.moveScrollUp(newState) 
+                else:
+                    newState = BasicReducers.setScrollDefault(newState)
+                return newState
+            else:
+                return BasicReducers.sameState(state)          
+        else:
+            return BasicReducers.sameState(state) 
+    
     @staticmethod
     def returnKey(state):
         length = len(state["prompt_data"]["cmd_prompt"])
@@ -233,12 +287,13 @@ class Renderer:
         app.listbox.delete(0, END)
         LOGGER.debug(f"Rendering application - children list is {state['children']} of length {num_children}")
         for child in state["children"]:
-            path = join(dir, child)
-            if isfile(path):
+            path = FileSystem.pathOfChild(dir, child)
+            dirorfile = FileSystem.dirOrFile(path) 
+            if dirorfile == "file":
                 LOGGER.debug(f"{child} is a file")
                 app.listbox.insert(END, child)
                 app.listbox.itemconfig(END, background="yellow", selectbackground="orange")
-            elif isdir(path):
+            else:
                 LOGGER.debug(f"{child}/ is a directory")
                 app.listbox.insert(END, child + "/") 
 
@@ -344,8 +399,14 @@ class Application:
         app.root.bind("<Key>", lambda event: Renderer.render(app, KeyBindReducers.key(app.state, event)))
         app.root.bind("<Return>", lambda event: Renderer.render(app, KeyBindReducers.returnKey(app.state)))
          
-        LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
-        app.root.bind(":", lambda event: Renderer.render(app, KeyBindReducers.colonKey(app.state)))
+        app.root.bind("<Up>", lambda event: Renderer.render(app, KeyBindReducers.upKey(app.state)))
+        app.root.bind("<Down>", lambda event: Renderer.render(app, KeyBindReducers.downKey(app.state)))
+        
+        app.root.bind("<Shift-Up>", lambda event: Renderer.render(app, KeyBindReducers.shiftUpKey(app.state)))
+        app.root.bind("<Shift-Down>", lambda event: Renderer.render(app, KeyBindReducers.shiftDownKey(app.state)))
+        
+        #LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
+        #app.root.bind(":", lambda event: Renderer.render(app, KeyBindReducers.colonKey(app.state)))
         
         #app.root.bind("<Down>", lambda event: app.render(Reducers.moveDownSelection(app.state)))
         #app.listbox.bind("<Up>", lambda event: app.render(Reducers.moveTopSelection(app.state)))
