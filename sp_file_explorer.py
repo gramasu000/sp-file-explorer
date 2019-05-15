@@ -216,7 +216,7 @@ class BasicReducer:
         newState["children"] = FileSystem.listDir(newState["directory"])
         newState["selected"] = newState["children"][0:1]
         newState["scroll_data"] = {
-            "list_size": 40,
+            "list_size": 25,
             "list_width": 100,
             "scroll_trigger": 3,
             "scroll_top": 0
@@ -694,8 +694,9 @@ class Application:
         LOGGER.info("Initializing User Interface")
         app.root = root 
         app.root.wm_title("Simple Python File Explorer")
-        app.root.rowconfigure(1, weight=1)
-        app.root.columnconfigure(0, weight=1)
+        app.root.resizable(False, False)
+        #app.root.rowconfigure(1, weight=1)
+        #app.root.columnconfigure(0, weight=1)
 
         LOGGER.debug("Initializing User Interface - Creating scrollable listbox which expands horizontally and vertically with root window")
         app.listbox = Listbox(app.root, background="white", activestyle="dotbox", takefocus=0)
