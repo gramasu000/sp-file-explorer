@@ -177,6 +177,18 @@ class FileSystem:
         return os.path.isdir(path)   
 
     @staticmethod
+    def open(cmd):
+        """ Given a terminal command, run it. Does not return anything.
+
+        Args:
+            cmd (str): Terminal command in string form.
+        
+        Todo:
+            Implement Exception handling if cmd is invalid.
+        """
+        os.system(cmd)
+
+    @staticmethod
     def dirOrFile(path):
         """ Given a path, returns a str indicating if the path is a file or directory
 
@@ -576,27 +588,21 @@ class KeyBindReducer:
     @staticmethod
     def returnKey(state):
         length = len(state["prompt_data"]["cmd_prompt"])
-        tokens = state["text"][length:].split()
-        if len(tokens) >= 1 and tokens[0] == "mvdir":
-            if len(tokens) >= 2 and tokens[1] == "up":
-                return BasicReducer.moveUpDir(state)
-            elif len(tokens) >= 2 and tokens[1] == "down":
-                return BasicReducer.moveDownDir(state)
-        elif len(tokens) >= 1 and tokens[0] == "mvsel":
-            if len(tokens) >= 2 and tokens[1] == "up":
-                return BasicReducer.moveUpSelection(state)
-            elif len(tokens) >= 2 and tokens[1] == "down":
-                return BasicReducer.moveDownSelection(state)
-        return BasicReducer.changeModeToBrowse(state, "Error - Unrecognized Command")
+        command = state["text"][length:]
+        if len(state["selected"]) != 0:
+            child = state["selected"][-1]
+            path = FileSystem.pathOfChild(state["directory"], child)
+            FileSystem.open(command + " " + path + " &")
+        return BasicReducer.setModeToBrowse(state, "SP File Explorer")
 
     @staticmethod
     def colonKey(state):
         if state["mode"] == "browse":
-            return BasicReducer.changeModeToCommand(state, "")
+            return BasicReducer.setModeToCommand(state, "")
 
     @staticmethod
     def escapeSelectKeys(state):
-        return BasicReducer.sameState(state)
+        return BasicReducer.setModeToBrowse(state, "SP File Explorer")
 
 class Renderer:
    
@@ -734,8 +740,8 @@ class Application:
         app.root.bind("<Shift-Up>", lambda event: Renderer.render(app, KeyBindReducer.shiftUpKey(app.state)))
         app.root.bind("<Shift-Down>", lambda event: Renderer.render(app, KeyBindReducer.shiftDownKey(app.state)))
         
-        #LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
-        #app.root.bind(":", lambda event: Renderer.render(app, KeyBindReducer.colonKey(app.state)))
+        LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
+        app.root.bind(":", lambda event: Renderer.render(app, KeyBindReducer.colonKey(app.state)))
         
         #app.root.bind("<Down>", lambda event: app.render(Reducers.moveDownSelection(app.state)))
         #app.listbox.bind("<Up>", lambda event: app.render(Reducers.moveTopSelection(app.state)))
