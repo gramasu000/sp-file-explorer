@@ -106,7 +106,7 @@ This global logger can be called by any function of any class in the module.
 """
 
 class FileSystem:
-    """Class of static method for file system functions
+    """Class holding static methods for file system functions
 
     This class has static methods which use functions from python os library.
     Thus, it provides a separation between file system functions and the rest of the application.
@@ -192,9 +192,25 @@ class FileSystem:
             return "file"
 
 class BasicReducer:
+    """Class of reducers (class methods) that make simple changes to state
+    
+    BasicReducer holds reducer functions, which make basic changes to the state dictionary.
+    The reducers in this class are meant to be simple, changing only a few key values.
+    The reducers assume the input state dictionary has all the necessary keys and does not sanitize the inputs.
+    (The KeyBindReducer class will have the more complicated reducers)
+    """
 
     @staticmethod
     def getInitState():
+        """ Returns a state dictionary which is the initial state of application
+        
+        This is a special reducer called in the very beginning of runtime
+            which sets the initial state of the application.
+        Therefore it does not have any inputs, but it returns a state dictionary as output.
+
+        Returns:
+            dict: A state dictionary representing initial state of application  
+        """
         newState = {}
         newState["directory"] = FileSystem.currentDir()
         newState["children"] = FileSystem.listDir(newState["directory"])
@@ -216,10 +232,35 @@ class BasicReducer:
     
     @staticmethod
     def sameState(state):
+        """ A reducer which returns a copy of the input state
+
+        This reducer makes a deep copy of the input state dictionary
+        and returns it, to indicate that the state has not changed.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+
+        Returns:
+            dict: State dictionary which represents nothing being changed
+        """
         return copy.deepcopy(state) 
 
     @classmethod
     def setModeToBrowse(cls, state, text):
+        """ A reducer which sets the application to browse mode, and displays text
+        
+        This reducer takes in an input state and a string.
+        It first makes a deep copy of the input state.
+        Then, it sets the state['mode'] to 'browse' and sets state['text'] 
+            to the concatenation of state['prompt_data']['brs_prompt'] and the input text.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+            text (str): Text to be displayed in text widget (after brs_prompt) 
+ 
+        Returns:
+            dict: State dictionary which represents browse mode to be activated and text message to be displayed
+        """
         newState = cls.sameState(state)
         newState["mode"] = "browse"
         newState["text"] = newState["prompt_data"]["brs_prompt"] + text
@@ -229,6 +270,20 @@ class BasicReducer:
 
     @classmethod
     def setModeToCommand(cls, state, text):
+        """ A reducer which sets the application to command mode and displays text
+
+        This reducer takes in an input state and a string.
+        It first makes a deep copy of the input state.
+        Then, it sets the state['mode'] to 'command' and sets state['text']
+            to the concatenation of state['prompt_data']['cmd_prompt'] and the input text.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+            text (str): Text to be displayed in text widget (after cmd_prompt) 
+ 
+        Returns:
+            dict: State dictionary which represents command mode to be activated and text message to be displayed
+        """
         newState = cls.sameState(state)
         newState["mode"] = "command"
         newState["text"] = newState["prompt_data"]["cmd_prompt"] + text
@@ -238,6 +293,23 @@ class BasicReducer:
 
     @classmethod
     def deleteText(cls, state):
+        """ A reducer which deletes a character from state["text"]
+
+        The reducer takes in an input state.
+        It first makes a deep copy of the input state,
+            and then sets state["text"] to state["text"][0:len(state["text"])-1],
+            i.e. it deletes the last character from state["text"].
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+            
+        Returns:
+            dict: State dictionary which represents a character being deleted from displayed text 
+        
+        Note:
+            This reducer assumes state["text"] is not the empty string.
+            This reducer will break if state["text"] is empty.
+        """
         newState = cls.sameState(state)
         cmd_length = len(state["text"])
         newState["text"] = state["text"][0:cmd_length-1]
@@ -245,12 +317,52 @@ class BasicReducer:
 
     @classmethod
     def addText(cls, state, char):
+        """ A reducer which adds a character to state["text"]
+
+        This reducer takes in an input state and a string.
+        It first makes a deep copy of the input state,
+            and appends the input string to  state["text"].
+        
+        Args:
+            state (dict): State dictionary of application at previous moment
+            text (str): Character to be appended to the displayed text 
+
+        Returns:
+            dict: State dictionary which represents a character appended to displayed text
+
+        Note:
+            This reducer assumes char has length 1, 
+                and that is how the reducer will be used generally,
+                but it won't break if char has a different length.
+        """
         newState = cls.sameState(state)
         newState["text"] += char
         return newState 
    
     @classmethod
     def moveDir(cls, state, dir):
+        """ A reducer which changes the directory and children being viewed by application.
+
+        This reducer takes in an input state and filepath to a directory.
+        It first makes a deep copy of input state,
+            and then sets the state["directory"] to dir.
+        It calls on FileSystem.listDir to list the children of directory dir,
+            and the list is set to state["children"]
+        
+        Args:
+            state (dict): State dictionary of application at previous moment
+            dir (str): Filepath of directory to be viewed by application
+
+        Returns:
+            dict: State dictionary which represents a directory and its children to be viewed by the application
+
+        Note:
+            This reducer assumes dir is a filepath to a directory. 
+            This reducer will break if 
+                (1) dir is not a string filepath
+                or 
+                (2) dir is a filepath to a file that is not a directory.
+        """
         newState = cls.sameState(state)
         newState["directory"] = dir
         newState["children"] = FileSystem.listDir(dir)
@@ -259,12 +371,49 @@ class BasicReducer:
 
     @classmethod
     def moveSelection(cls, state, indices):
+        """ A reducer which changes the children files selected in application
+
+        This reducer takes in an input state and a list of indices (integers).
+        It first makes a deep copy of the input state,
+            and then sets state["selected"] to include state["children"][i]
+                for every i in the indices list.
+        
+        Args:
+            state (dict): State dictionary of application at previous moment
+            indices (str): List of indices (integers)
+
+        Returns:
+            dict: State dictionary which represents children files (indicated by indices list) which are selected in application.
+
+        Note:
+            This reducer assumes all the integers in indices
+                are between 0 and len(state["children"]) - 1 inclusive.
+            This reducer will break if that is not true.
+        """
         newState = cls.sameState(state)
         newState["selected"] = [newState["children"][i] for i in indices]
         return newState
 
     @classmethod
     def moveScrollDown(cls, state):
+        """ A reducer which moves scrolling down to match selection
+
+        This reducer takes in an input state.
+        It first makes a deep copy of the input state,
+            and then sets the state["scroll_data"]["scroll_top"] to be such that
+            the last selected child will be T-1 rows from the *bottom* of the list window.
+        T is the state["scroll_data"]["scroll_trigger"].
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+            
+        Returns:
+            dict: State dictionary which represents the list window being scrolled down appropriately.
+
+        Note:
+            This reducer assumes that state["selected"] is not empty.
+            This reducer will break if that is not true.
+        """ 
         newState = cls.sameState(state)
         index = newState["children"].index(newState["selected"][-1]) 
         numc = len(newState["children"])
@@ -275,6 +424,24 @@ class BasicReducer:
 
     @classmethod
     def moveScrollUp(cls, state):
+        """ A reducer which moves scrolling up to match selection
+
+        This reducer takes in an input state.
+        It first makes a deep copy of the input state,
+            and then sets the state["scroll_data"]["scroll_top"] to be such that
+            the last selected child will be T-1 rows from the *top* of the list window.
+        T is the state["scroll_data"]["scroll_trigger"].
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+            
+        Returns:
+            dict: State dictionary which represents the list window being scrolled up appropriately.
+
+        Note:
+            This reducer assumes that state["selected"] is not empty.
+            This reducer will break if that is not true.
+        """
         newState = cls.sameState(state)
         index = newState["children"].index(newState["selected"][-1])
         numc = len(newState["children"])
@@ -285,12 +452,38 @@ class BasicReducer:
    
     @classmethod
     def setScrollDefault(cls, state):
+        """ A reducer which moves scrolling to top
+
+        This reducer takes in an input state.
+        It first makes a deep copy of the input state,
+            and then sets state["scroll_data"]["scroll_top"] to 0,
+            which will make the first child in children list to be on the first row of the visible list window.
+        This means the list scrollbar moves to the top.
+        
+        Args:
+            state (dict): State dictionary of application at previous moment
+            
+        Returns:
+            dict: State dictionary which represents the list window being scrolled to the top.
+        """
         newState = cls.sameState(state)
         newState["scroll_data"]["scroll_top"] = 0
         return newState 
  
     @classmethod
     def quit(cls, state):
+        """ A reducer which set application to quit mode.
+
+        This reducer takes in an input state.
+        It first makes a deep copy, and sets state["mode"] to "quit".
+        When the output state is passed to Renderer, the Renderer will immediately destroy the application.
+        
+        Args:
+            state (dict): State dictionary of application at previous moment
+            
+        Returns:
+            dict: State dictionary which represents the application to be quit.
+        """
         newState = cls.sameState(state)
         newState["mode"] = "quit"
         return newState
