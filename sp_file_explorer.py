@@ -1,18 +1,89 @@
-from sys import exit
+"""Simple Python File Explorer
+
+Simple Python File Explorer is a GUI program written using the Tkinter module
+    from Python's Standard Library.
+This module, sp_file_explorer, defines all of the classes and functions necessary 
+    to run the application.
+
+This program uses a Redux-like approach to managing the state of the application.
+Refer to https://redux.js.org/introduction/core-concepts for more information.
+
+The state of the application is a python dictionary, with the following keys.
+    
+    state = {
+        "directory": (str - Directory the application is viewing),
+        "children": (list - List of filenames who are children of the directory above),
+        "selected": (list - A subset of the list of children - denotes those which are selected),
+        "scroll_data": {
+            "list_size": (int - height (number of lines) of the visible list widget),
+            "list_width": (int - width (number of characters) of the visible list widget),
+            "scroll_trigger": (int - if you select a file within this margin from the top or bottom of list, the list will scroll),
+            "scroll_top": (int - file index (in children list) of top line of listbox; indicates vertical scroll position), 
+        },
+        "mode": (str - Enumeration of 'mode' of application; valid values are ['browse', 'command','quit'])
+        "prompt_data": {
+            "cmd_prompt": (str - String to show when application is in command mode)
+            "brs_prompt": (str - String to show when application is in browse mode)
+        }
+        "text": (str - Contents of text widget, displayed in the application) 
+    }
+
+This dictionary is a single source of truth for the state of the application, and is never modified directly.
+If the user wants to change the state, they do so by using reducers.
+Reducers are functions which take in a state (plus other data) and outputs out a new state which represents
+    the change the user is seeking.
+
+The first and formost class to mention is the Application class. 
+This class holds all of the Tkinter widgets of the GUI, and binds callback functions to events.
+It also has a state property to hold the python dictionary matching the current application state.
+
+There are two classes which hold reducer functions - BasicReducer and KeyBindReducer.
+BasicReducer and KeyBindReducer hold reducers as class methods.
+BasicReducer hold reducers which make (relatively) straightforward changes to the state
+In contrast, KeyBindReducer hold reducers which make more complicated changes to the state, 
+    many times depending on the previous state itself (resulting in many if-else statements).
+KeyBindReducer methods always call either one BasicReducer method or a composition of BasicReducer methods,
+    and are used directly as part of callback functions for application events.
+
+The Renderer class holds a class method called render.
+Renderer.render takes in state dictionary and an Application instance
+    and changes widget properties for the application to match the state.
+In other words, it "renders" the application to match the state.
+
+Finally, since this is a file explorer application, the app uses the python os library heavily.
+The FileSystem class holds class methods to abstract away calls to the os library.
+
+The module also has a global object LOGGER, which is the module level logger.
+
+To run this application, run it just as you would run a python script.
+
+    $ python sp_file_explorer.py
+
+"""
+
+import sys
 import os
 import copy
-#from os import listdir, getcwd
-#from os.path import getmtime, getsize, isdir, isfile, islink, dirname, join
-#from copy import deepcopy
-#from time import localtime
-from tkinter import Tk, Label, Listbox, Scrollbar, Text, N, S, E, W, VERTICAL, END, DISABLED, NORMAL, NONE, INSERT, DISABLED, StringVar
 import logging
+from tkinter import Tk, Label, Listbox, Scrollbar, Text, N, S, E, W, VERTICAL, END, DISABLED, NORMAL, NONE, INSERT, DISABLED, StringVar
 
-"""
-State represented as a python dictionary.
 
-"""
 def initLogging(logger_name, logfile_name):
+    """Initializes a object for logging 
+
+    This function returns a logging.Logger object which has two handlers 
+        - a stream handler to output to console 
+        - a file handler to output to file
+    The stream handler will handle log records of level INFO and above
+    The file handler will handle log records of level DEBUG and above
+    
+    Args:
+        logger_name (str): Name of logging.Logger object
+        logfile_name (str): Name of log file
+    
+    Returns:  
+        logging.Logger: logger object to use for application
+    """
     logger = logging.getLogger(logger_name)
     if len(logger.handlers) == 0 and logger.getEffectiveLevel() == logging.WARN:
         formatter = logging.Formatter(style="{", fmt="({name}) {asctime}-{levelname}: {message}")
@@ -27,36 +98,100 @@ def initLogging(logger_name, logfile_name):
         logger.setLevel(logging.DEBUG)
     return logger
 
-class FileSystem:
 
+LOGGER = initLogging(__name__, "sp_file_explorer.log")
+"""logging.Logger: Module Level Logger 
+
+This global logger can be called by any function of any class in the module.
+"""
+
+class FileSystem:
+    """Class of static method for file system functions
+
+    This class has static methods which use functions from python os library.
+    Thus, it provides a separation between file system functions and the rest of the application.
+    It also allows us (developers) to construct file system functions of arbitrary complexity as needed
+        by just adding a static method to this class.  
+    """
+    
     @staticmethod
     def currentDir():
+        """ Returns the current working directory 
+
+        Returns:
+            str: The current working directory 
+        """
         return os.getcwd()
 
     @staticmethod
     def listDir(dir):
+        """ Returns the list of children files of  directory 
+    
+        Args:
+            dir (str): A directory filepath
+    
+        Returns:
+            list: List of children filenames of 'dir'
+        """
         return os.listdir(dir)
 
     @staticmethod
     def parent(path):
+        """ Given a file's filepath, returns the parent directory
+
+        Args:
+            path (str): Filepath of a file
+
+        Returns:
+            str: Filepath of the parent directory of file 
+        """ 
         return os.path.dirname(path)
 
     @staticmethod
     def pathOfChild(dir, child):
+        """ Given a filename and parent directory path, return the file's path
+
+        Args:
+            dir (str): Filepath of parent directory
+            child (str): Filename of child file
+
+        Returns:
+            str: Filepath of child file 
+        """
         return os.path.join(dir, child)
 
     @staticmethod
     def isChildOpenable(path):
-        return os.path.isdir(path)        
+        """ Given a path, returns a boolean indicating if the file is 'openable'
+
+        Args:
+            path (str): Filepath of a file
+
+        Returns:
+            bool: True if file is a directory with appropriate permissions, False otherwise
+
+        Todo:
+            Right now, this function only checks if file is a directory.
+            Also include if the user has permissions to open the file.
+        """
+        return os.path.isdir(path)   
 
     @staticmethod
     def dirOrFile(path):
+        """ Given a path, returns a str indicating if the path is a file or directory
+
+        Args:
+            path (str): Filepath of a file
+
+        Returns:
+            str: 'dir' if file is a directory with appropriate permissions, 'file' otherwise
+        """
         if os.path.isdir(path):
             return "dir"
         elif os.path.isfile(path):
             return "file"
 
-class BasicReducers:
+class BasicReducer:
 
     @staticmethod
     def getInitState():
@@ -161,69 +296,69 @@ class BasicReducers:
         return newState
 
         
-class KeyBindReducers:
+class KeyBindReducer:
 
     @staticmethod
     def deleteKey(state):
         if state["mode"] == "command" and state["text"] == state["prompt_data"]["cmd_prompt"]:
-            return BasicReducers.setModeToBrowse(state, "SP File Explorer")
+            return BasicReducer.setModeToBrowse(state, "SP File Explorer")
         elif state["mode"] == "command":
-            return BasicReducers.deleteText(state)
+            return BasicReducer.deleteText(state)
         else: 
-            return BasicReducers.sameState(state)
+            return BasicReducer.sameState(state)
 
     @staticmethod
     def key(state, event):
         if state["mode"] == "command":
-            return BasicReducers.addText(state, event.char)
+            return BasicReducer.addText(state, event.char)
         else:
-            return BasicReducers.sameState(state) 
+            return BasicReducer.sameState(state) 
 
     @staticmethod
     def upKey(state):
         if state["mode"] == "browse" and len(state["selected"]) != 0:
             index = state["children"].index(state["selected"][-1])
-            newState = BasicReducers.setModeToBrowse(state, "Moved Selection Up")
+            newState = BasicReducer.setModeToBrowse(state, "Moved Selection Up")
             if index != 0:
                 newIndex = index - 1
-                newState = BasicReducers.moveSelection(newState, [newIndex])
+                newState = BasicReducer.moveSelection(newState, [newIndex])
                 wIndex = newIndex - newState["scroll_data"]["scroll_top"]
                 trig = newState["scroll_data"]["scroll_trigger"]  
                 if wIndex < trig - 1:
-                    newState = BasicReducers.moveScrollUp(newState)
+                    newState = BasicReducer.moveScrollUp(newState)
             return newState
         else:
-            return BasicReducers.sameState(state) 
+            return BasicReducer.sameState(state) 
             
     @staticmethod
     def downKey(state):
         if state["mode"] == "browse" and len(state["selected"]) != 0:
             index = state["children"].index(state["selected"][-1]) 
             numc = len(state["children"])
-            newState = BasicReducers.setModeToBrowse(state, "Moved Selection Down")
+            newState = BasicReducer.setModeToBrowse(state, "Moved Selection Down")
             if index != numc-1:
                 newIndex = index + 1
                 wIndex = newIndex - newState["scroll_data"]["scroll_top"]
                 numw = state["scroll_data"]["list_size"]
                 trig = state["scroll_data"]["scroll_trigger"]  
-                newState = BasicReducers.moveSelection(newState, [newIndex])
+                newState = BasicReducer.moveSelection(newState, [newIndex])
                 if wIndex > numw - trig:
-                    newState = BasicReducers.moveScrollDown(newState)
+                    newState = BasicReducer.moveScrollDown(newState)
             return newState
         else:
-            return BasicReducers.sameState(state) 
+            return BasicReducer.sameState(state) 
 
     @staticmethod
     def shiftUpKey(state):
         parent = FileSystem.parent(state["directory"])
         LOGGER.debug(f"\t parent is {parent}")
-        newState = BasicReducers.moveDir(state, parent)
-        newState = BasicReducers.setModeToBrowse(newState, "Moved Up Directory")
+        newState = BasicReducer.moveDir(state, parent)
+        newState = BasicReducer.setModeToBrowse(newState, "Moved Up Directory")
         if len(newState["children"]) > 0:
-            newState = BasicReducers.moveSelection(newState, [0])
-            newState = BasicReducers.moveScrollUp(newState) 
+            newState = BasicReducer.moveSelection(newState, [0])
+            newState = BasicReducer.moveScrollUp(newState) 
         else:
-            newState = BasicReducers.setScrollDefault(newState)
+            newState = BasicReducer.setScrollDefault(newState)
         return newState 
    
     @staticmethod
@@ -232,18 +367,18 @@ class KeyBindReducers:
             child_path = FileSystem.pathOfChild(state["directory"], state["selected"][-1])
             openable = FileSystem.isChildOpenable(child_path)
             if openable:
-                newState = BasicReducers.moveDir(state, child_path)
-                newState = BasicReducers.setModeToBrowse(newState, "Moved Down Directory")
+                newState = BasicReducer.moveDir(state, child_path)
+                newState = BasicReducer.setModeToBrowse(newState, "Moved Down Directory")
                 if len(newState["children"]) > 0:
-                    newState = BasicReducers.moveSelection(newState, [0])
-                    newState = BasicReducers.moveScrollUp(newState) 
+                    newState = BasicReducer.moveSelection(newState, [0])
+                    newState = BasicReducer.moveScrollUp(newState) 
                 else:
-                    newState = BasicReducers.setScrollDefault(newState)
+                    newState = BasicReducer.setScrollDefault(newState)
                 return newState
             else:
-                return BasicReducers.sameState(state)          
+                return BasicReducer.sameState(state)          
         else:
-            return BasicReducers.sameState(state) 
+            return BasicReducer.sameState(state) 
     
     @staticmethod
     def returnKey(state):
@@ -251,24 +386,24 @@ class KeyBindReducers:
         tokens = state["text"][length:].split()
         if len(tokens) >= 1 and tokens[0] == "mvdir":
             if len(tokens) >= 2 and tokens[1] == "up":
-                return BasicReducers.moveUpDir(state)
+                return BasicReducer.moveUpDir(state)
             elif len(tokens) >= 2 and tokens[1] == "down":
-                return BasicReducers.moveDownDir(state)
+                return BasicReducer.moveDownDir(state)
         elif len(tokens) >= 1 and tokens[0] == "mvsel":
             if len(tokens) >= 2 and tokens[1] == "up":
-                return BasicReducers.moveUpSelection(state)
+                return BasicReducer.moveUpSelection(state)
             elif len(tokens) >= 2 and tokens[1] == "down":
-                return BasicReducers.moveDownSelection(state)
-        return BasicReducers.changeModeToBrowse(state, "Error - Unrecognized Command")
+                return BasicReducer.moveDownSelection(state)
+        return BasicReducer.changeModeToBrowse(state, "Error - Unrecognized Command")
 
     @staticmethod
     def colonKey(state):
         if state["mode"] == "browse":
-            return BasicReducers.changeModeToCommand(state, "")
+            return BasicReducer.changeModeToCommand(state, "")
 
     @staticmethod
     def escapeSelectKeys(state):
-        return BasicReducers.sameState(state)
+        return BasicReducer.sameState(state)
 
 class Renderer:
    
@@ -345,7 +480,7 @@ class Renderer:
         if state["mode"] == "quit":
             LOGGER.info(f"Quitting Application")
             app.root.destroy()
-            exit(0)
+            sys.exit(0)
 
     @classmethod
     def render(cls, app, state):
@@ -393,20 +528,20 @@ class Application:
         #app.root.bind("-", lambda event: app.render(Reducers.moveUpDir(app.state)))
         #app.root.bind("<Return>", lambda event: app.render(Reducers.moveDownDir(app.state)))
         LOGGER.debug(f"Binding virtual event of listbox selection with mouse to changeModeToBrowse reducer - so the mouse does not affect selection")
-        app.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(app, KeyBindReducers.escapeSelectKeys(app.state)))
-        app.root.bind("<Escape>", lambda event: Renderer.render(app, KeyBindReducers.escapeSelectKeys(app.state)))
-        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, KeyBindReducers.deleteKey(app.state)))
-        app.root.bind("<Key>", lambda event: Renderer.render(app, KeyBindReducers.key(app.state, event)))
-        app.root.bind("<Return>", lambda event: Renderer.render(app, KeyBindReducers.returnKey(app.state)))
+        app.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(app, KeyBindReducer.escapeSelectKeys(app.state)))
+        app.root.bind("<Escape>", lambda event: Renderer.render(app, KeyBindReducer.escapeSelectKeys(app.state)))
+        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, KeyBindReducer.deleteKey(app.state)))
+        app.root.bind("<Key>", lambda event: Renderer.render(app, KeyBindReducer.key(app.state, event)))
+        app.root.bind("<Return>", lambda event: Renderer.render(app, KeyBindReducer.returnKey(app.state)))
          
-        app.root.bind("<Up>", lambda event: Renderer.render(app, KeyBindReducers.upKey(app.state)))
-        app.root.bind("<Down>", lambda event: Renderer.render(app, KeyBindReducers.downKey(app.state)))
+        app.root.bind("<Up>", lambda event: Renderer.render(app, KeyBindReducer.upKey(app.state)))
+        app.root.bind("<Down>", lambda event: Renderer.render(app, KeyBindReducer.downKey(app.state)))
         
-        app.root.bind("<Shift-Up>", lambda event: Renderer.render(app, KeyBindReducers.shiftUpKey(app.state)))
-        app.root.bind("<Shift-Down>", lambda event: Renderer.render(app, KeyBindReducers.shiftDownKey(app.state)))
+        app.root.bind("<Shift-Up>", lambda event: Renderer.render(app, KeyBindReducer.shiftUpKey(app.state)))
+        app.root.bind("<Shift-Down>", lambda event: Renderer.render(app, KeyBindReducer.shiftDownKey(app.state)))
         
         #LOGGER.debug(f"Binding ':' key to changeModeToCommand reducer")
-        #app.root.bind(":", lambda event: Renderer.render(app, KeyBindReducers.colonKey(app.state)))
+        #app.root.bind(":", lambda event: Renderer.render(app, KeyBindReducer.colonKey(app.state)))
         
         #app.root.bind("<Down>", lambda event: app.render(Reducers.moveDownSelection(app.state)))
         #app.listbox.bind("<Up>", lambda event: app.render(Reducers.moveTopSelection(app.state)))
@@ -416,16 +551,13 @@ class Application:
         #app.root.bind("q", lambda event: app.render(Reducers.quit(app.state)))
 
     def __init__(app, root):
-        app.state = BasicReducers.getInitState()
+        app.state = BasicReducer.getInitState()
         app.initUI(root)
         Renderer.render(app, app.state)
         app.bindCallbacks()
 
 
 if __name__ == "__main__":
-    global LOGGER
-    LOGGER = initLogging(__name__, "sp_file_explorer.log")
-    print(LOGGER)
     LOGGER.info("Starting Application")
     ROOT = Tk()
     APP = Application(ROOT)
