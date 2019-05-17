@@ -136,6 +136,16 @@ class FileSystem:
         return os.listdir(dir)
 
     @staticmethod
+    def changeCWD(dir):
+        """ Changes current working directory to input directory path
+        
+        Args:
+            dir (str): A directory filepath
+        """
+        os.chdir(dir)
+
+
+    @staticmethod
     def parent(path):
         """ Given a file's filepath, returns the parent directory
 
@@ -206,7 +216,7 @@ class FileSystem:
 class BasicReducer:
     """Class of reducers (class methods) that make simple changes to state
     
-    BasicReducer holds reducer functions, which make basic changes to the state dictionary.
+    BasicReducer holds reducer functions that make basic changes to the state dictionary.
     The reducers in this class are meant to be simple, changing only a few key values.
     The reducers assume the input state dictionary has all the necessary keys and does not sanitize the inputs.
     (The KeyBindReducer class will have the more complicated reducers)
@@ -377,6 +387,7 @@ class BasicReducer:
         """
         newState = cls.sameState(state)
         newState["directory"] = dir
+        FileSystem.changeCWD(dir)
         newState["children"] = FileSystem.listDir(dir)
         newState["selected"] = []
         return newState
@@ -502,9 +513,29 @@ class BasicReducer:
 
         
 class KeyBindReducer:
+    """ Class of reducers (class methods) which make more complicated changes to state
+
+    KeyBindReducer holds reducer functions that make more complicated changes to state
+        but *not directly* - they do so by calling a composition of BasicReducer methods.
+    KeyBindReducer methods oftentimes check the previous state keys to see what changes are needed to the state,
+        resulting in these reducers having a lot of if-else conditionals compared to BasicReducer methods.
+    KeyBindReducer methods are often directly used in application event callbacks (which is not the case for BasicReducer methods)   
+    """
 
     @staticmethod
-    def deleteKey(state):
+    def backSpaceKey(state):
+        """ Reducer associated with backspace keypress event callback
+
+        If user is in browse mode and the user presses BackSpace, this reducer does not do anything.
+        If the user is in command mode, and there is no command text, the reducer reverts the state back to browse mode.
+        Finally, if the user is in command mode, and there is a command text, the reducer will delete a character.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+
+        Returns:
+            dict: State dictionary representing the effect of pressing backspace
+        """
         if state["mode"] == "command" and state["text"] == state["prompt_data"]["cmd_prompt"]:
             return BasicReducer.setModeToBrowse(state, "SP File Explorer")
         elif state["mode"] == "command":
@@ -514,6 +545,18 @@ class KeyBindReducer:
 
     @staticmethod
     def key(state, event):
+        """ Reducer associated with character keypress event callback 
+        
+        If user is in command mode and presses a key, this reducer will add the character to command text.
+        Otherwise, this reducer does nothing.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+            event (tkinter.Event): KeyPress Event object
+
+        Returns:
+            dict: State dictionary representing the effect of pressing a character key
+        """
         if state["mode"] == "command":
             return BasicReducer.addText(state, event.char)
         else:
@@ -521,6 +564,20 @@ class KeyBindReducer:
 
     @staticmethod
     def upKey(state):
+        """ Reducer associated with up arrow keypress event callback
+
+        If user is in browse mode, and presses up, this reducer will move 
+        the selection up the list of children files (unless already at the top), 
+            and scrolling will be adjusted accordingly.
+        If the user is not in browse mode, or if there are no children in the directory,
+            the reducer does nothing.       
+ 
+        Args:
+            state (dict): State dictionary of application at previous moment
+
+        Returns:
+            dict: State dictionary representing the effect of pressing up arrow key
+        """
         if state["mode"] == "browse" and len(state["selected"]) != 0:
             index = state["children"].index(state["selected"][-1])
             newState = BasicReducer.setModeToBrowse(state, "Moved Selection Up")
@@ -537,6 +594,20 @@ class KeyBindReducer:
             
     @staticmethod
     def downKey(state):
+        """ Reducer associated with down arrow keypress event callback
+        
+        If user is in browse mode and presses down, this reducer will make 
+            the selection move down the list of children files (unless already at the bottom),
+            and scrolling will be adjusted accordingly.
+        If the user is not in browse mode, or if there are no children in the directory,
+            the reducer does nothing.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+
+        Returns:
+            dict: State dictionary representing the effect of pressing down arrow key 
+        """ 
         if state["mode"] == "browse" and len(state["selected"]) != 0:
             index = state["children"].index(state["selected"][-1]) 
             numc = len(state["children"])
@@ -555,20 +626,46 @@ class KeyBindReducer:
 
     @staticmethod
     def shiftUpKey(state):
-        parent = FileSystem.parent(state["directory"])
-        LOGGER.debug(f"\t parent is {parent}")
-        newState = BasicReducer.moveDir(state, parent)
-        newState = BasicReducer.setModeToBrowse(newState, "Moved Up Directory")
-        if len(newState["children"]) > 0:
-            newState = BasicReducer.moveSelection(newState, [0])
-            newState = BasicReducer.moveScrollUp(newState) 
-        else:
-            newState = BasicReducer.setScrollDefault(newState)
-        return newState 
+        """ Reducer associated with Shift-Up keypress event callback
+
+        If the user is in browse mode and presses Shift-Up, this reducer will make the application ascend to the parent directory.
+        The parent's children files will be shown, and selection/scrolling will be set to top.
+        Otherwise, this reducer will do nothing.
+        
+        Args:
+            state (dict): State dictionary of application at previous moment.
+
+        Returns:
+            dict: State dictionary representing the effect of pressing Shift-Up arrow key
+        """
+        if state["mode"] == "browse":
+            parent = FileSystem.parent(state["directory"])
+            LOGGER.debug(f"\t parent is {parent}")
+            newState = BasicReducer.moveDir(state, parent)
+            newState = BasicReducer.setModeToBrowse(newState, "Moved Up Directory")
+            if len(newState["children"]) > 0:
+                newState = BasicReducer.moveSelection(newState, [0])
+                newState = BasicReducer.moveScrollUp(newState) 
+            else:
+                newState = BasicReducer.setScrollDefault(newState)
+            return newState 
    
     @staticmethod
     def shiftDownKey(state):
-        if len(state["selected"]) > 0:
+        """ Reducer associated with down arrow keypress event callback
+
+        If the user is in browse mode, selection is on a child directory, 
+            and the user presses Shift-Down, this reducer will make the application descend down the child directory.
+        The directory's children files will be shown, and selection/scrolling will be set to top.
+        Otherwise, this reducer does nothing.
+        
+        Args:
+            state (dict): State dictionary of application at previous moment.
+
+        Returns:
+            dict: State dictionary representing the effect of pressing Shift-Down arrow key 
+        """
+        if state["mode"] == "browse" and len(state["selected"]) > 0:
             child_path = FileSystem.pathOfChild(state["directory"], state["selected"][-1])
             openable = FileSystem.isChildOpenable(child_path)
             if openable:
@@ -587,27 +684,87 @@ class KeyBindReducer:
     
     @staticmethod
     def returnKey(state):
-        length = len(state["prompt_data"]["cmd_prompt"])
-        command = state["text"][length:]
-        if len(state["selected"]) != 0:
-            child = state["selected"][-1]
-            path = FileSystem.pathOfChild(state["directory"], child)
-            FileSystem.open(command + " " + path + " &")
-        return BasicReducer.setModeToBrowse(state, "SP File Explorer")
+        """ Reducer associated with Return keypress event callback
+
+        If the user is in command mode, types in a command, and presses Enter,
+            this reducer executes the command in a shell, and sets the application will to browse mode.
+        In other cases, the reducer will do nothing.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+
+        Returns:
+            dict: State dictionary representing the effects of pressing Shift-Down arrow key
+        """
+        if state["mode"] == "command":
+            length = len(state["prompt_data"]["cmd_prompt"])
+            command = state["text"][length:]
+            if len(state["selected"]) != 0:
+                child = state["selected"][-1]
+                path = FileSystem.pathOfChild(state["directory"], child)
+                FileSystem.open(command + " " + path + " &")
+            newState = BasicReducer.setModeToBrowse(state, "SP File Explorer")
+            return newState
+        else:
+            return BasicReducer.sameState(state) 
+            
 
     @staticmethod
     def colonKey(state):
+        """ Reducer associated with Colon keypress event callback
+
+        If the user is in browse mode and presses the colon key,
+            the application switches to command mode.
+        Otherwise, this reducer does nothing 
+        
+        Args:
+            state (dict): State dictionary of application at previous moment
+    
+        Returns:
+            dict: State dictionary representing the effect of pressing colon key
+        """
         if state["mode"] == "browse":
             return BasicReducer.setModeToCommand(state, "")
+        else:
+            return BasicReducer.sameState(state)
 
     @staticmethod
     def escapeSelectKeys(state):
+        """ Reducer associated with mouse select and Escape Keypress event callbacks
+        
+        This reducer will set the application to browse mode.
+
+        Args:
+            state (dict): State dictionary of application at previous moment
+
+        Returns:
+            dict: State dictionary representing the effect of pressing escape or clicking the mouse.
+        """
         return BasicReducer.setModeToBrowse(state, "SP File Explorer")
 
 class Renderer:
-   
+    """ Class which is responsible for rendering the application from state dictionary  
+
+    Renderer has one class method, render(), which takes in an application instance
+        and a state and renders the application from the state.
+    All other class methods are helper methods for render(). 
+    """ 
+
     @staticmethod
     def _render_label(app, state):
+        """ Sets the label widget to show state["directory"]
+
+        This helper function changes the text of the label widget 
+            to state["directory"].
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+
+        Note:
+            This method assumes state dictionary has at least the "directory" key.
+            This method will break if that is not the case 
+        """
         dir = state["directory"]
         LOGGER.debug(f"Rendering application - Setting Label to current directory")
         app.label.configure(text=dir)
@@ -615,6 +772,20 @@ class Renderer:
     
     @staticmethod
     def _render_listbox_items(app, state):
+        """ Sets listbox widget to show state["children"]
+
+        This helper function deletes the contents of listbox
+            and inserts the members of state["children"].
+        There is special yellow highlighting if child file is not a directory. 
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+
+        Note:
+            This method assumes state dictionary has at least the "children" key.
+            This method will break if that is not the case 
+        """
         dir = state["directory"]
         num_children = len(state["children"])
         LOGGER.debug(f"Rendering application - Setting Listbox to contain children")
@@ -633,6 +804,9 @@ class Renderer:
 
     @staticmethod
     def _select_selected_children(app, state):
+        """ 
+
+        """
         LOGGER.debug(f"Rendering application - selecting children")
         LOGGER.debug(f"Rendering application - selected children list is {state['selected']}")
         for child in state["selected"]:
@@ -730,7 +904,7 @@ class Application:
         LOGGER.debug(f"Binding virtual event of listbox selection with mouse to changeModeToBrowse reducer - so the mouse does not affect selection")
         app.root.bind("<<ListboxSelect>>", lambda event: Renderer.render(app, KeyBindReducer.escapeSelectKeys(app.state)))
         app.root.bind("<Escape>", lambda event: Renderer.render(app, KeyBindReducer.escapeSelectKeys(app.state)))
-        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, KeyBindReducer.deleteKey(app.state)))
+        app.root.bind("<BackSpace>", lambda event: Renderer.render(app, KeyBindReducer.backSpaceKey(app.state)))
         app.root.bind("<Key>", lambda event: Renderer.render(app, KeyBindReducer.key(app.state, event)))
         app.root.bind("<Return>", lambda event: Renderer.render(app, KeyBindReducer.returnKey(app.state)))
          
