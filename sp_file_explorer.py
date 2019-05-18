@@ -804,17 +804,34 @@ class Renderer:
 
     @staticmethod
     def _select_selected_children(app, state):
-        """ 
+        """ Sets selection on elements of state["selected"] 
 
+        This helper function clears the selection and set the list selection highlight
+            on the selected children according to state["selected"]
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
         """
         LOGGER.debug(f"Rendering application - selecting children")
         LOGGER.debug(f"Rendering application - selected children list is {state['selected']}")
+        app.listbox.selection_clear(0, END)
         for child in state["selected"]:
             index = state["children"].index(child)
             app.listbox.selection_set(index)
          
     @staticmethod
     def _set_scroll_position(app, state):
+        """ Sets scroll position based on state["scroll_data"]["scroll_top"]
+
+        This helper function sets the scroll position so that
+            the child file of index state["scroll_data"]["scroll_top"]
+            occupies the top row of visible listbox
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+        """
         num_children = len(state["children"])
         LOGGER.debug(f"Rendering application - setting scroll")
         fraction = state["scroll_data"]["scroll_top"] / (num_children + 1)
@@ -823,13 +840,23 @@ class Renderer:
             
     @staticmethod
     def _render_text(app, state):
+        """ Renders the text underneath the listbox - either a command or a notice for the user
+
+        This helper function sets the text widget to state["text"].
+        If the app is not in command mode, this function disables the text widget
+            so that the user cannot edit the text.
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+        """
         LOGGER.debug(f"Rendering application - Setting text")
         app.text.configure(state=NORMAL)
         app.text.delete("1.0", END)
         app.text.insert(END, state["text"])                 
         LOGGER.debug(f"Rendering application - Text is {state['text']}")
         LOGGER.debug(f"Rendering application - App is is {state['mode']} mode")
-        if state["mode"] != "command":        
+        if state["mode"] != "command":
             app.text.configure(state=DISABLED)
             app.root.focus_set()
         else:
@@ -837,12 +864,24 @@ class Renderer:
 
     @staticmethod
     def _save_state_in_app(app, state):
+        """ Saves the state dictionary as a property of application
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+        """
         LOGGER.debug(f"Rendering application - Saving state dictionary")
         app.state = state
         LOGGER.debug(f"Rendering application - State: {app.state}")
 
     @staticmethod
     def _set_sizes_of_listbox(app, state):
+        """ Sets the size of listbox according to state["scroll_data"]["list_width"]  and state["scroll_data"]["list_size"]
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+        """
         LOGGER.debug(f"Rendering application - Sizing listbox widget")
         app.listbox.configure(width=state["scroll_data"]["list_width"], height=state["scroll_data"]["list_size"])
         LOGGER.debug(f"Rendering application - Listbox width is {state['scroll_data']['list_width']} characters") 
@@ -850,6 +889,12 @@ class Renderer:
 
     @staticmethod
     def _check_quit_mode(app, state):
+        """ Quits the application if state["mode"] is "quit"
+        
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+        """
         if state["mode"] == "quit":
             LOGGER.info(f"Quitting Application")
             app.root.destroy()
@@ -857,6 +902,12 @@ class Renderer:
 
     @classmethod
     def render(cls, app, state):
+        """ Calls all the helper functions in this class one by one to render the application.
+
+        Args:
+            app (sp_file_explorer.Application): application instance
+            state (dict): State dictionary to be rendered
+        """
         LOGGER.info(f"Rendering application")
         cls._check_quit_mode(app, state)
         cls._save_state_in_app(app, state)
@@ -869,8 +920,26 @@ class Renderer:
         
     
 class Application:
-    
+    """ Class which holds the application widgets and sets callback functions.
+
+    Application is a class which can be instantiated. 
+    This is in contrast to all the other classes in this module 
+        which serve as containers for their methods.  
+    An application instance holds the tkinter widgets and sets callback functions
+        on keypress and other events.
+    """
+
     def initUI(app, root):
+        """ Initializes the application widgets and sets basic layout
+
+        Takes in a Tk object, which acts as the root of the application,
+            and instantiates tkinter widgets as children of the root.
+        Uses the tkinter grid geometry manager to arrange the widgets in a basic layout. 
+        Also sets the title of the window.
+
+        Args:
+            root (tkinter.Tk): Root "widget" of the application. All other widgets are children of root.
+        """
         LOGGER.info("Initializing User Interface")
         app.root = root 
         app.root.wm_title("Simple Python File Explorer")
@@ -898,6 +967,13 @@ class Application:
 
 
     def bindCallbacks(app):
+        """ Bind event callback functions to keypress events.
+
+        Binds event callback functions to trigger whenever the user presses a key or clicks something.
+        Each callback function is a lambda function which does two things.
+            It first call a method from KeyBindReducer to change the state appropriately.
+            It then passes the new state to Renderer.render(). 
+        """
         LOGGER.info(f"Binding Callbacks")
         #app.root.bind("-", lambda event: app.render(Reducers.moveUpDir(app.state)))
         #app.root.bind("<Return>", lambda event: app.render(Reducers.moveDownDir(app.state)))
@@ -925,6 +1001,11 @@ class Application:
         #app.root.bind("q", lambda event: app.render(Reducers.quit(app.state)))
 
     def __init__(app, root):
+        """ Gets and renders the initial state of the application, initializes widgets and binds callback functions
+
+        Args:
+            root (tkinter.Tk): Root "widget" of the application. All other widgets are children of root.
+        """
         app.state = BasicReducer.getInitState()
         app.initUI(root)
         Renderer.render(app, app.state)
@@ -932,6 +1013,7 @@ class Application:
 
 
 if __name__ == "__main__":
+    """ Instantiate a Tk object, an Application object and run the main event loop. """
     LOGGER.info("Starting Application")
     ROOT = Tk()
     APP = Application(ROOT)
