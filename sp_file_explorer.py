@@ -908,7 +908,7 @@ class Renderer:
             app (sp_file_explorer.Application): application instance
             state (dict): State dictionary to be rendered
         """
-        LOGGER.info(f"Rendering application")
+        LOGGER.debug(f"Rendering application")
         cls._check_quit_mode(app, state)
         cls._save_state_in_app(app, state)
         cls._set_sizes_of_listbox(app, state)
